@@ -12,13 +12,17 @@ import {
   Edit3, 
   Plus, 
   Clock, 
-  Phone
+  Phone,
+  User,
+  Lock,
+  ShieldCheck
 } from 'lucide-react';
-import { DailyReportFormData } from '../types';
+import { DailyReportFormData, CurrentUser } from '../types';
 import { calculateTotals, shareToWhatsApp, generateWhatsAppReportText } from '../utils/whatsapp';
 
 interface ReportSummaryModalProps {
   report: DailyReportFormData | null;
+  currentUser?: CurrentUser;
   onClose: () => void;
   onNewReport: () => void;
   onEditReport?: (report: DailyReportFormData) => void;
@@ -26,6 +30,7 @@ interface ReportSummaryModalProps {
 
 export const ReportSummaryModal: React.FC<ReportSummaryModalProps> = ({
   report,
+  currentUser,
   onClose,
   onNewReport,
   onEditReport,
@@ -36,8 +41,17 @@ export const ReportSummaryModal: React.FC<ReportSummaryModalProps> = ({
 
   if (!report) return null;
 
+  const author = report.authorEmail || '';
+  const isOwner = !!(currentUser?.email && author && currentUser.email.toLowerCase() === author.toLowerCase());
+  const isAdmin = currentUser?.role === 'admin';
+  const canModify = isAdmin || isOwner || !author;
+
   const { totalBoring, totalPulling, totalHH, totalHB, totalMH, totalMB, totalPit } =
     calculateTotals(report);
+
+  const displayHH = report.totalProgressHH || totalHH.toString();
+  const displayHB = report.totalProgressHB || totalHB.toString();
+  const displayMH = report.totalProgressMH || totalMH.toString();
 
   const handleCopySummary = () => {
     const text = generateWhatsAppReportText(report);
@@ -86,6 +100,15 @@ export const ReportSummaryModal: React.FC<ReportSummaryModalProps> = ({
           
           {/* Metadata Card */}
           <div className="bg-[#050b14] p-3.5 rounded-xl border border-cyan-500/20 space-y-2">
+            {report.projectId && (
+              <div className="flex items-center justify-between text-slate-300 text-[11px] pb-1 border-b border-slate-800/60">
+                <span className="text-slate-400 font-mono-cyber">Project ID:</span>
+                <span className="font-mono-cyber font-bold text-cyan-400 bg-cyan-950/70 border border-cyan-500/30 px-1.5 py-0.5 rounded">
+                  {report.projectId}
+                </span>
+              </div>
+            )}
+
             <div className="flex items-center justify-between text-slate-300">
               <span className="text-slate-400 font-mono-cyber">Nama Project:</span>
               <span className="font-cyber font-bold text-cyan-300 text-xs sm:text-sm truncate max-w-[200px]">
@@ -102,6 +125,20 @@ export const ReportSummaryModal: React.FC<ReportSummaryModalProps> = ({
               </div>
             )}
 
+            {/* Author Ownership Metadata */}
+            <div className="flex items-center justify-between text-slate-300 text-[11px] pt-1 border-t border-slate-800/60">
+              <span className="text-slate-400 font-mono-cyber">Pembuat Laporan (Author):</span>
+              <span className="font-mono-cyber font-semibold text-cyan-300 flex items-center gap-1">
+                <User className="w-3 h-3 text-cyan-400" />
+                <span>{author ? (isOwner ? `${author} (Anda)` : author) : 'Anonim'}</span>
+                {report.authorRole === 'admin' && (
+                  <span className="text-[9px] text-amber-400 bg-amber-950/80 px-1 rounded border border-amber-500/40">
+                    Admin
+                  </span>
+                )}
+              </span>
+            </div>
+
             <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-800/80 text-[11px]">
               <div className="flex items-center gap-1.5 text-slate-300">
                 <Calendar className="w-3.5 h-3.5 text-white shrink-0" />
@@ -115,30 +152,67 @@ export const ReportSummaryModal: React.FC<ReportSummaryModalProps> = ({
               </div>
             </div>
 
-            {(report.startDate || report.endDate) && (
+            {(report.startDate || report.durasiPekerjaan || report.endDate) && (
               <div className="text-[11px] font-mono-cyber text-slate-400 pt-1 border-t border-slate-800/60 flex items-center gap-1.5">
-                <Calendar className="w-3 h-3 text-white shrink-0" />
-                <span>Periode: <span className="text-slate-200">{report.startDate || '-'} s/d {report.endDate || '-'}</span></span>
+                <Clock className="w-3 h-3 text-emerald-400 shrink-0" />
+                <span>
+                  Start: <span className="text-slate-200">{report.startDate || '-'}</span>
+                  {report.durasiPekerjaan ? (
+                    <span> • Sisa Durasi: <span className="text-emerald-400 font-semibold">{report.durasiPekerjaan} Hari</span></span>
+                  ) : report.endDate ? (
+                    <span> s/d <span className="text-slate-200">{report.endDate}</span></span>
+                  ) : null}
+                </span>
               </div>
             )}
           </div>
 
           {/* Quick Metrics */}
-          <div className="grid grid-cols-2 gap-2.5">
-            <div className="bg-cyan-950/30 border border-cyan-500/30 p-3 rounded-xl">
-              <span className="text-[10px] uppercase font-mono-cyber text-cyan-300 block mb-1">
-                Total Sipil Hari Ini
-              </span>
-              <div className="text-lg font-bold font-mono-cyber text-white">
-                {report.totalProgressSipil || '0'} <span className="text-xs font-normal text-cyan-400">m</span>
+          <div className="space-y-2">
+            <div className="grid grid-cols-2 gap-2.5">
+              <div className="bg-cyan-950/30 border border-cyan-500/30 p-3 rounded-xl">
+                <span className="text-[10px] uppercase font-mono-cyber text-cyan-300 block mb-1">
+                  Total Sipil Hari Ini
+                </span>
+                <div className="text-lg font-bold font-mono-cyber text-white">
+                  {report.totalProgressSipil || '0'} <span className="text-xs font-normal text-cyan-400">m</span>
+                </div>
+              </div>
+              <div className="bg-emerald-950/30 border border-emerald-500/30 p-3 rounded-xl">
+                <span className="text-[10px] uppercase font-mono-cyber text-emerald-300 block mb-1">
+                  Total Kabel Hari Ini
+                </span>
+                <div className="text-lg font-bold font-mono-cyber text-white">
+                  {report.totalProgressKabel || '0'} <span className="text-xs font-normal text-emerald-400">m</span>
+                </div>
               </div>
             </div>
-            <div className="bg-emerald-950/30 border border-emerald-500/30 p-3 rounded-xl">
-              <span className="text-[10px] uppercase font-mono-cyber text-emerald-300 block mb-1">
-                Total Kabel Hari Ini
-              </span>
-              <div className="text-lg font-bold font-mono-cyber text-white">
-                {report.totalProgressKabel || '0'} <span className="text-xs font-normal text-emerald-400">m</span>
+
+            {/* Pit Metrics: HH, HB, MH */}
+            <div className="grid grid-cols-3 gap-2">
+              <div className="bg-amber-950/25 border border-amber-500/30 p-2.5 rounded-xl">
+                <span className="text-[9px] sm:text-[10px] uppercase font-mono-cyber text-amber-300 block mb-0.5">
+                  Total HH
+                </span>
+                <div className="text-base font-bold font-mono-cyber text-white">
+                  {displayHH} <span className="text-xs font-normal text-amber-400">Pcs</span>
+                </div>
+              </div>
+              <div className="bg-orange-950/25 border border-orange-500/30 p-2.5 rounded-xl">
+                <span className="text-[9px] sm:text-[10px] uppercase font-mono-cyber text-orange-300 block mb-0.5">
+                  Total HB
+                </span>
+                <div className="text-base font-bold font-mono-cyber text-white">
+                  {displayHB} <span className="text-xs font-normal text-orange-400">Pcs</span>
+                </div>
+              </div>
+              <div className="bg-purple-950/25 border border-purple-500/30 p-2.5 rounded-xl">
+                <span className="text-[9px] sm:text-[10px] uppercase font-mono-cyber text-purple-300 block mb-0.5">
+                  Total MH
+                </span>
+                <div className="text-base font-bold font-mono-cyber text-white">
+                  {displayMH} <span className="text-xs font-normal text-purple-400">Pcs</span>
+                </div>
               </div>
             </div>
           </div>
@@ -241,17 +315,30 @@ export const ReportSummaryModal: React.FC<ReportSummaryModalProps> = ({
             </button>
 
             {onEditReport ? (
-              <button
-                type="button"
-                onClick={() => {
-                  onEditReport(report);
-                  onClose();
-                }}
-                className="py-2.5 px-3 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-              >
-                <Edit3 className="w-3.5 h-3.5 text-amber-400" />
-                <span>Edit Laporan Ini</span>
-              </button>
+              canModify ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onEditReport(report);
+                    onClose();
+                  }}
+                  className="py-2.5 px-3 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                  title={isAdmin ? "Edit Laporan (Akses Penuh Admin)" : "Edit Laporan Anda"}
+                >
+                  <Edit3 className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Edit Laporan Ini</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  disabled
+                  className="py-2.5 px-3 rounded-xl bg-slate-900 border border-slate-800 text-slate-600 text-xs font-semibold flex items-center justify-center gap-1.5 cursor-not-allowed opacity-60"
+                  title={`Edit Terkunci: Dibuat oleh ${author}. Hanya pembuat atau Admin yang berhak menyunting.`}
+                >
+                  <Lock className="w-3.5 h-3.5 text-slate-600" />
+                  <span>Edit Terkunci</span>
+                </button>
+              )
             ) : (
               <button
                 type="button"
@@ -263,6 +350,13 @@ export const ReportSummaryModal: React.FC<ReportSummaryModalProps> = ({
               </button>
             )}
           </div>
+
+          {!canModify && (
+            <div className="text-[10px] text-red-300/80 bg-red-950/40 border border-red-500/30 rounded-lg p-2 flex items-center gap-1.5 font-mono-cyber">
+              <Lock className="w-3 h-3 text-red-400 shrink-0" />
+              <span>Proteksi Data: Mode baca saja. Hanya pembuat ({author || 'user terkait'}) atau Admin yang dapat mengedit.</span>
+            </div>
+          )}
 
           <div className="flex items-center justify-between pt-1">
             <button

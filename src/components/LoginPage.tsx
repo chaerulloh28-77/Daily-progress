@@ -1,30 +1,71 @@
 import React, { useState } from 'react';
-import { Lock, Mail, Eye, EyeOff, Radio, AlertTriangle } from 'lucide-react';
+import { Lock, Mail, Eye, EyeOff, Radio, AlertTriangle, ShieldCheck, UserCheck } from 'lucide-react';
 import { PmoLogo } from './PmoLogo';
 import { LinkNetLogo } from './LinkNetLogo';
+import { sendLoginNotification } from '../utils/emailHelper';
+import { CurrentUser, UserRole } from '../types';
 
 interface LoginPageProps {
-  onLoginSuccess: (email: string) => void;
+  onLoginSuccess: (user: CurrentUser) => void;
 }
 
 export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
-  const [email, setEmail] = useState('pengawas.lapangan@gov-network.id');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Deteksi role berdasarkan input email
+  const cleanEmail = email.trim().toLowerCase();
+  const isDetectedAdmin = cleanEmail === 'admin@gov.com';
+  const detectedRole: UserRole = isDetectedAdmin ? 'admin' : 'waspang';
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
+
+    if (!cleanEmail) {
+      setErrorMessage('Email wajib diisi');
+      return;
+    }
+
+    if (!password) {
+      setErrorMessage('Password wajib diisi');
+      return;
+    }
+
     setIsSubmitting(true);
 
     setTimeout(() => {
-      if (password === '123456789') {
-        onLoginSuccess(email);
+      // Aturan Keamanan 1: Validasi Khusus Akun Admin
+      if (isDetectedAdmin) {
+        if (password !== 'gov_123') {
+          setErrorMessage('Password Admin tidak valid');
+          setIsSubmitting(false);
+          return;
+        }
       } else {
-        setErrorMessage('Password salah');
+        // Aturan Keamanan 2: Validasi Akun Waspang (User)
+        if (password !== 'waspang_gov123') {
+          setErrorMessage('Password Waspang tidak valid');
+          setIsSubmitting(false);
+          return;
+        }
       }
+
+      const currentUser: CurrentUser = {
+        email: email.trim(),
+        role: detectedRole,
+        name: isDetectedAdmin ? 'Administrator' : email.trim().split('@')[0],
+      };
+
+      // Kirim notifikasi login real-time ke chaerulloh28@gmail.com
+      sendLoginNotification(email.trim()).catch((err) => {
+        console.error('[LoginPage] Gagal mengirim notifikasi email login:', err);
+      });
+
+      onLoginSuccess(currentUser);
       setIsSubmitting(false);
     }, 250);
   };
@@ -136,6 +177,26 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
                   className="w-full pl-10 pr-3.5 py-2.5 rounded-lg bg-[#0d1830] border border-slate-700/80 text-white placeholder-slate-500 text-sm focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 transition-colors"
                 />
               </div>
+
+              {/* Dynamic Role Badge Indicator */}
+              {cleanEmail && (
+                <div className="mt-1.5 flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[10px] font-mono-cyber text-slate-400">Terdeteksi Role:</span>
+                    {isDetectedAdmin ? (
+                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-500/20 border border-amber-500/50 text-[10px] font-mono-cyber font-bold text-amber-300">
+                        <ShieldCheck className="w-3 h-3 text-amber-400" />
+                        ADMIN (Akses Penuh)
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-cyan-950/70 border border-cyan-500/40 text-[10px] font-mono-cyber font-semibold text-cyan-300">
+                        <UserCheck className="w-3 h-3 text-cyan-400" />
+                        WASPANG (Pengawas)
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
 
             <div>

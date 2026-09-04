@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
-import { X, Calendar, MapPin, Eye, Trash2, Clock, MessageSquare, Edit3, Plus } from 'lucide-react';
-import { DailyReportFormData } from '../types';
-import { shareToWhatsApp } from '../utils/whatsapp';
+import { X, Calendar, MapPin, Eye, Trash2, Clock, MessageSquare, Edit3, Plus, Lock, User, Cloud } from 'lucide-react';
+import { DailyReportFormData, CurrentUser } from '../types';
+import { shareToWhatsApp, calculateTotals } from '../utils/whatsapp';
 
 interface SavedReportsDrawerProps {
   isOpen: boolean;
   onClose: () => void;
   reports: DailyReportFormData[];
+  currentUser: CurrentUser;
   onSelectReport: (report: DailyReportFormData) => void;
   onEditReport: (report: DailyReportFormData) => void;
   onDeleteReport: (index: number) => void;
@@ -17,6 +18,7 @@ export const SavedReportsDrawer: React.FC<SavedReportsDrawerProps> = ({
   isOpen,
   onClose,
   reports,
+  currentUser,
   onSelectReport,
   onEditReport,
   onDeleteReport,
@@ -87,6 +89,11 @@ export const SavedReportsDrawer: React.FC<SavedReportsDrawerProps> = ({
             </div>
           ) : (
             reports.map((report, idx) => {
+              const author = report.authorEmail || '';
+              const isOwner = !!(currentUser?.email && author && currentUser.email.toLowerCase() === author.toLowerCase());
+              const isAdmin = currentUser?.role === 'admin';
+              const canModify = isAdmin || isOwner || !author;
+
               return (
                 <div
                   key={report.id || idx}
@@ -95,6 +102,11 @@ export const SavedReportsDrawer: React.FC<SavedReportsDrawerProps> = ({
                   <div className="flex items-start justify-between gap-1">
                     <div>
                       <div className="flex items-center gap-1.5 flex-wrap">
+                        {report.projectId && (
+                          <span className="text-[10px] font-mono-cyber px-1.5 py-0.2 rounded bg-slate-800/90 border border-cyan-500/40 text-cyan-300 font-semibold">
+                            ID: {report.projectId}
+                          </span>
+                        )}
                         <span className="font-cyber font-bold text-white text-xs">
                           {report.projectName || 'Project Tanpa Nama'}
                         </span>
@@ -109,33 +121,98 @@ export const SavedReportsDrawer: React.FC<SavedReportsDrawerProps> = ({
                           </span>
                         )}
                       </div>
-                      <div className="text-[10px] text-slate-400 flex items-center gap-1.5 font-mono-cyber mt-1">
+
+                      {/* Author Ownership Badge & Sync Status */}
+                      <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                        <span 
+                          className={`text-[10px] font-mono-cyber px-2 py-0.5 rounded-md border inline-flex items-center gap-1 ${
+                            isOwner 
+                              ? 'bg-cyan-950/90 border-cyan-400/60 text-cyan-200' 
+                              : isAdmin
+                              ? 'bg-amber-950/50 border-amber-500/40 text-amber-300'
+                              : 'bg-slate-900 border-slate-700/80 text-slate-400'
+                          }`}
+                          title={`Email Pembuat: ${author || 'Tidak terdata'}`}
+                        >
+                          <User className="w-2.5 h-2.5 shrink-0" />
+                          <span>Oleh: {author ? (isOwner ? `${author.split('@')[0]} (Anda)` : author) : 'Anonim'}</span>
+                        </span>
+
+                        {report.syncedToCloud && (
+                          <span className="text-[9px] font-mono-cyber px-1.5 py-0.5 rounded bg-emerald-950/70 border border-emerald-500/40 text-emerald-300 inline-flex items-center gap-0.5">
+                            <Cloud className="w-2.5 h-2.5 text-emerald-400" />
+                            <span>Cloud</span>
+                          </span>
+                        )}
+
+                        {!canModify && (
+                          <span className="text-[9px] font-mono-cyber px-1.5 py-0.5 rounded bg-red-950/60 border border-red-500/40 text-red-300 inline-flex items-center gap-0.5">
+                            <Lock className="w-2.5 h-2.5 text-red-400" />
+                            <span>Read-Only</span>
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="text-[10px] text-slate-400 flex items-center gap-1.5 font-mono-cyber mt-1 flex-wrap">
                         <Calendar className="w-3.5 h-3.5 text-white shrink-0" />
                         <span>{report.reportDate}</span>
                         <span className="text-slate-600">•</span>
                         <span>{report.weatherCondition}</span>
+                        {report.durasiPekerjaan && (
+                          <>
+                            <span className="text-slate-600">•</span>
+                            <span className="text-emerald-400 font-medium">Sisa: {report.durasiPekerjaan} Hari</span>
+                          </>
+                        )}
                       </div>
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={() => setDeleteConfirmIdx(idx)}
-                      className="p-1 rounded text-slate-500 hover:text-red-400 hover:bg-red-950/40 transition-colors shrink-0"
-                      title="Hapus Laporan"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+                    {/* Proteksi Tombol Hapus */}
+                    {canModify ? (
+                      <button
+                        type="button"
+                        onClick={() => setDeleteConfirmIdx(idx)}
+                        className="p-1 rounded text-slate-500 hover:text-red-400 hover:bg-red-950/40 transition-colors shrink-0 cursor-pointer"
+                        title={isAdmin ? "Hapus Laporan (Akses Penuh Admin)" : "Hapus Laporan Milik Anda"}
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    ) : (
+                      <span
+                        className="p-1 rounded text-slate-600 shrink-0 cursor-not-allowed opacity-50"
+                        title={`Hapus Dibatasi: Laporan ini dibuat oleh ${author || 'user lain'}. Hanya pembuat atau Admin yang dapat menghapus.`}
+                      >
+                        <Lock className="w-3.5 h-3.5 text-slate-500" />
+                      </span>
+                    )}
                   </div>
 
                   {/* Metrics summary */}
-                  <div className="grid grid-cols-2 gap-1.5 py-1.5 px-2 rounded-lg bg-[#070e1c] border border-slate-800/60 font-mono-cyber text-[11px]">
-                    <div className="text-slate-400">
-                      Sipil: <span className="text-white font-semibold">{report.totalProgressSipil || 0}m</span>
-                    </div>
-                    <div className="text-slate-400">
-                      Kabel: <span className="text-emerald-400 font-semibold">{report.totalProgressKabel || 0}m</span>
-                    </div>
-                  </div>
+                  {(() => {
+                    const { totalHH, totalHB, totalMH } = calculateTotals(report);
+                    const displayHH = report.totalProgressHH || totalHH.toString();
+                    const displayHB = report.totalProgressHB || totalHB.toString();
+                    const displayMH = report.totalProgressMH || totalMH.toString();
+                    return (
+                      <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5 py-1.5 px-2 rounded-lg bg-[#070e1c] border border-slate-800/60 font-mono-cyber text-[10px] sm:text-[11px]">
+                        <div className="text-slate-400">
+                          Sipil: <span className="text-white font-semibold">{report.totalProgressSipil || 0}m</span>
+                        </div>
+                        <div className="text-slate-400">
+                          Kabel: <span className="text-emerald-400 font-semibold">{report.totalProgressKabel || 0}m</span>
+                        </div>
+                        <div className="text-slate-400">
+                          HH: <span className="text-amber-300 font-semibold">{displayHH}</span>
+                        </div>
+                        <div className="text-slate-400">
+                          HB: <span className="text-orange-300 font-semibold">{displayHB}</span>
+                        </div>
+                        <div className="text-slate-400">
+                          MH: <span className="text-purple-300 font-semibold">{displayMH}</span>
+                        </div>
+                      </div>
+                    );
+                  })()}
 
                   {report.kendalaLapangan && (
                     <div className="text-[10px] text-slate-400 italic line-clamp-1">
@@ -187,18 +264,31 @@ export const SavedReportsDrawer: React.FC<SavedReportsDrawerProps> = ({
                       <span>Rekap</span>
                     </button>
 
-                    <button
-                      type="button"
-                      onClick={() => {
-                        onEditReport(report);
-                        onClose();
-                      }}
-                      className="py-1 px-1.5 rounded bg-amber-950/60 hover:bg-amber-900/80 border border-amber-500/40 text-amber-300 flex items-center justify-center gap-1 text-[10px] font-semibold transition-colors"
-                      title="Sunting & Edit Data Laporan"
-                    >
-                      <Edit3 className="w-3 h-3 text-amber-400" />
-                      <span>Edit</span>
-                    </button>
+                    {/* Proteksi Tombol Edit */}
+                    {canModify ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onEditReport(report);
+                          onClose();
+                        }}
+                        className="py-1 px-1.5 rounded bg-amber-950/60 hover:bg-amber-900/80 border border-amber-500/40 text-amber-300 flex items-center justify-center gap-1 text-[10px] font-semibold transition-colors cursor-pointer"
+                        title={isAdmin ? "Sunting Data Laporan (Akses Penuh Admin)" : "Sunting & Edit Data Laporan Anda"}
+                      >
+                        <Edit3 className="w-3 h-3 text-amber-400" />
+                        <span>Edit</span>
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        disabled
+                        className="py-1 px-1.5 rounded bg-slate-900/90 border border-slate-800 text-slate-600 flex items-center justify-center gap-1 text-[10px] font-semibold cursor-not-allowed opacity-60"
+                        title={`Edit Terkunci: Dibuat oleh ${author || 'user lain'}. Hanya pembuat atau Admin yang berhak mengedit.`}
+                      >
+                        <Lock className="w-3 h-3 text-slate-600" />
+                        <span>Terkunci</span>
+                      </button>
+                    )}
 
                     <button
                       type="button"

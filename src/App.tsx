@@ -5,9 +5,17 @@ import { DailyReportForm } from './components/DailyReportForm';
 import { ReportSummaryModal } from './components/ReportSummaryModal';
 import { SavedReportsDrawer } from './components/SavedReportsDrawer';
 import { ProjectManagementModal } from './components/ProjectManagementModal';
-import { DailyReportFormData, ProjectItem } from './types';
+import { ClearScreenModal } from './components/ClearScreenModal';
+import { DailyReportFormData, ProjectItem, CurrentUser, UserRole } from './types';
 import { INITIAL_REPORT_DATA } from './data';
 import { CheckCircle } from 'lucide-react';
+import { 
+  sendLoginNotification, 
+  sendDailyReportNotification, 
+  sendReportEditNotification,
+  TARGET_EMAIL 
+} from './utils/emailHelper';
+import { syncReportToCloud, deleteReportFromCloud } from './services/cloudSync';
 
 export default function App() {
   // Auth state: dummy login as requested
@@ -16,6 +24,16 @@ export default function App() {
   });
   const [userEmail, setUserEmail] = useState<string>(() => {
     return localStorage.getItem('gov_user_email') || 'pengawas.lapangan@gov-network.id';
+  });
+  const [currentUser, setCurrentUser] = useState<CurrentUser>(() => {
+    const email = localStorage.getItem('gov_user_email') || 'pengawas.lapangan@gov-network.id';
+    const savedRole = localStorage.getItem('gov_user_role') as UserRole;
+    const role: UserRole = savedRole || (email.trim().toLowerCase() === 'admin@gov.com' ? 'admin' : 'waspang');
+    return {
+      email,
+      role,
+      name: role === 'admin' ? 'Administrator' : email.split('@')[0],
+    };
   });
 
   // Master projects list: starts empty as requested
@@ -64,6 +82,7 @@ export default function App() {
   const [activeReportModal, setActiveReportModal] = useState<DailyReportFormData | null>(null);
   const [isHistoryDrawerOpen, setIsHistoryDrawerOpen] = useState(false);
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
+  const [isClearScreenModalOpen, setIsClearScreenModalOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   // Sync projects to local storage
@@ -90,12 +109,20 @@ export default function App() {
   };
 
   // Auth handler
-  const handleLoginSuccess = (email: string) => {
+  const handleLoginSuccess = (user: CurrentUser) => {
     setIsLoggedIn(true);
-    setUserEmail(email);
+    setCurrentUser(user);
+    setUserEmail(user.email);
     localStorage.setItem('gov_logged_in', 'true');
-    localStorage.setItem('gov_user_email', email);
-    showToast('Autentikasi Pengawas Berhasil. Sesi Logger Aktif.');
+    localStorage.setItem('gov_user_email', user.email);
+    localStorage.setItem('gov_user_role', user.role);
+
+    // Dispatch real-time login email alert ke chaerulloh28@gmail.com
+    sendLoginNotification(user.email).catch((err) => {
+      console.error('[App] Gagal mengirim notifikasi login:', err);
+    });
+
+    showToast(`Autentikasi Berhasil sebagai ${user.role === 'admin' ? 'ADMIN (Full Access)' : 'WASPANG'}.`);
   };
 
   const handleLogout = () => {
@@ -116,13 +143,36 @@ export default function App() {
     setProjects((prev) => [newProject, ...prev]);
 
     // Automatically fill into form
+    const projectTotalDurasi = newProject.durasiPekerjaan || newProject.totalDurasi || '30';
+    const curDay = parseInt(formData.dayNumber || '1', 10);
+    const dayOffset = !isNaN(curDay) && curDay >= 1 ? curDay - 1 : 0;
+    const computedDurasi = Math.max(0, parseFloat(projectTotalDurasi) - dayOffset).toString();
+
+    const baseSipil = newProject.targetSipil || '1000';
+    const baseKabel = newProject.targetKabel || '2000';
+    const baseHH = newProject.targetHH || '10';
+    const baseHB = newProject.targetHB || '10';
+    const baseMH = newProject.targetMH || '5';
+
     setFormData((prev) => ({
       ...prev,
       projectName: newProject.name,
-      projectId: newProject.id,
+      projectId: newProject.code || newProject.id,
       waspangName: newProject.pic || prev.waspangName || '',
       startDate: newProject.startDate || prev.startDate,
       endDate: newProject.endDate || prev.endDate,
+      durasiPekerjaan: computedDurasi,
+      totalDurasi: projectTotalDurasi,
+      baseTargetSipil: baseSipil,
+      baseTargetKabel: baseKabel,
+      baseTargetHH: baseHH,
+      baseTargetHB: baseHB,
+      baseTargetMH: baseMH,
+      totalProgressSipil: baseSipil,
+      totalProgressKabel: baseKabel,
+      totalProgressHH: baseHH,
+      totalProgressHB: baseHB,
+      totalProgressMH: baseMH,
     }));
 
     showToast(`Project "${newProject.name}" berhasil ditambahkan.`);
@@ -132,12 +182,19 @@ export default function App() {
     setProjects((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
     // If the active form is using this project, update its name as well
     if (formData.projectId === updated.id) {
+      const projectTotalDurasi = updated.durasiPekerjaan || updated.totalDurasi || formData.totalDurasi || '30';
+      const curDay = parseInt(formData.dayNumber || '1', 10);
+      const dayOffset = !isNaN(curDay) && curDay >= 1 ? curDay - 1 : 0;
+      const computedDurasi = Math.max(0, parseFloat(projectTotalDurasi) - dayOffset).toString();
+
       setFormData((prev) => ({
         ...prev,
         projectName: updated.name,
         waspangName: updated.pic || prev.waspangName || '',
         startDate: updated.startDate || prev.startDate,
         endDate: updated.endDate || prev.endDate,
+        durasiPekerjaan: computedDurasi,
+        totalDurasi: projectTotalDurasi,
       }));
     }
     showToast(`Project "${updated.name}" berhasil diperbarui.`);
@@ -150,13 +207,68 @@ export default function App() {
   };
 
   const handleSelectProject = (project: ProjectItem) => {
+    const projectTotalDurasi = project.durasiPekerjaan || project.totalDurasi || formData.totalDurasi || '30';
+    const curDay = parseInt(formData.dayNumber || '1', 10);
+    const dayOffset = !isNaN(curDay) && curDay >= 1 ? curDay - 1 : 0;
+    const computedDurasi = Math.max(0, parseFloat(projectTotalDurasi) - dayOffset).toString();
+
+    const baseSipil = project.targetSipil || formData.baseTargetSipil || '1000';
+    const baseKabel = project.targetKabel || formData.baseTargetKabel || '2000';
+    const baseHH = project.targetHH || formData.baseTargetHH || '10';
+    const baseHB = project.targetHB || formData.baseTargetHB || '10';
+    const baseMH = project.targetMH || formData.baseTargetMH || '5';
+
+    const curBoring = 
+      (parseFloat(formData.boring.boringAlur) || 0) +
+      (parseFloat(formData.boring.boringCrossingJalan) || 0) +
+      (parseFloat(formData.boring.boringCrossingJalanTol) || 0) +
+      (parseFloat(formData.boring.boringCrossingJembatan) || 0);
+
+    const curPulling = 
+      (parseFloat(formData.pulling.pulling288) || 0) +
+      (parseFloat(formData.pulling.pulling288GL) || 0) +
+      (parseFloat(formData.pulling.pulling144) || 0) +
+      (parseFloat(formData.pulling.pulling96) || 0) +
+      (parseFloat(formData.pulling.pulling96GL) || 0) +
+      (parseFloat(formData.pulling.pulling48) || 0) +
+      (parseFloat(formData.pulling.pulling24) || 0);
+
+    const curHH = 
+      (parseFloat(formData.instalasiHH.hh60x60) || 0) +
+      (parseFloat(formData.instalasiHH.hh80x80) || 0) +
+      (parseFloat(formData.instalasiHH.hh100x100) || 0) +
+      (parseFloat(formData.instalasiHH.hh120x120) || 0);
+
+    const curHB = 
+      (parseFloat(formData.instalasiHB.hb60x60) || 0) +
+      (parseFloat(formData.instalasiHB.hb80x80) || 0) +
+      (parseFloat(formData.instalasiHB.hb100x100) || 0) +
+      (parseFloat(formData.instalasiHB.hb120x120) || 0);
+
+    const curMH = 
+      (parseFloat(formData.instalasiMH.mh80x80) || 0) +
+      (parseFloat(formData.instalasiMH.mh100x100) || 0) +
+      (parseFloat(formData.instalasiMH.mh120x120) || 0);
+
     setFormData((prev) => ({
       ...prev,
       projectName: project.name,
-      projectId: project.id,
+      projectId: project.code || project.id,
       waspangName: project.pic || prev.waspangName || '',
       startDate: project.startDate || prev.startDate,
       endDate: project.endDate || prev.endDate,
+      durasiPekerjaan: computedDurasi,
+      totalDurasi: projectTotalDurasi,
+      baseTargetSipil: baseSipil,
+      baseTargetKabel: baseKabel,
+      baseTargetHH: baseHH,
+      baseTargetHB: baseHB,
+      baseTargetMH: baseMH,
+      totalProgressSipil: Math.max(0, (parseFloat(baseSipil) || 0) - curBoring).toString(),
+      totalProgressKabel: Math.max(0, (parseFloat(baseKabel) || 0) - curPulling).toString(),
+      totalProgressHH: Math.max(0, (parseFloat(baseHH) || 0) - curHH).toString(),
+      totalProgressHB: Math.max(0, (parseFloat(baseHB) || 0) - curHB).toString(),
+      totalProgressMH: Math.max(0, (parseFloat(baseMH) || 0) - curMH).toString(),
     }));
     setIsProjectModalOpen(false);
     showToast(`Project terpilih: "${project.name}"`);
@@ -177,20 +289,45 @@ export default function App() {
     }) + ' WIB';
 
     if (editingReportId) {
+      // Dapatkan data laporan sebelum diubah untuk menghitung detail perubahannya
+      const previousReport = savedReports.find((item) => item.id === editingReportId) || null;
+      const prevAuthor = previousReport?.authorEmail || '';
+
+      // Validasi izin edit: Hanya author atau Admin
+      const canEdit = currentUser.role === 'admin' || !prevAuthor || prevAuthor.toLowerCase() === currentUser.email.toLowerCase();
+      if (!canEdit) {
+        showToast(`Akses Ditolak: Hanya pembuat (${prevAuthor}) atau Admin yang dapat menyunting laporan ini.`);
+        return;
+      }
+
       // UPDATE EXISTING REPORT
       const updatedReport: DailyReportFormData = {
         ...formData,
         id: editingReportId,
         submittedAt: timestamp + ' (Diedit)',
+        authorEmail: previousReport?.authorEmail || currentUser.email,
+        authorRole: previousReport?.authorRole || currentUser.role,
+        lastEditedBy: currentUser.email,
+        syncedToCloud: true,
       };
 
       setSavedReports((prev) =>
         prev.map((item) => (item.id === editingReportId ? updatedReport : item))
       );
 
+      // Sinkronisasi background ke cloud storage (Firebase/Supabase)
+      syncReportToCloud(updatedReport, currentUser).catch((err) => {
+        console.error('[App] Gagal cloud sync:', err);
+      });
+
+      // Trigger notifikasi edit laporan ke chaerulloh28@gmail.com
+      sendReportEditNotification(updatedReport, previousReport, currentUser.email).catch((err) => {
+        console.error('[App] Gagal mengirim email notifikasi edit laporan:', err);
+      });
+
       setEditingReportId(null);
       setActiveReportModal(updatedReport);
-      showToast('Perubahan laporan progress harian berhasil diperbarui!');
+      showToast(`Perubahan laporan disimpan & sinkron cloud aktif!`);
     } else {
       // CREATE NEW REPORT
       const newReportId = 'rep-' + Date.now();
@@ -198,67 +335,160 @@ export default function App() {
         ...formData,
         id: newReportId,
         submittedAt: timestamp,
+        authorEmail: currentUser.email,
+        authorRole: currentUser.role,
+        authorName: currentUser.name || currentUser.email.split('@')[0],
+        syncedToCloud: true,
       };
 
       setSavedReports((prev) => [reportWithTimestamp, ...prev]);
+
+      // Sinkronisasi background ke cloud storage (Firebase/Supabase)
+      syncReportToCloud(reportWithTimestamp, currentUser).catch((err) => {
+        console.error('[App] Gagal cloud sync:', err);
+      });
+
+      // Trigger auto-save rekap progress harian ke chaerulloh28@gmail.com
+      sendDailyReportNotification(reportWithTimestamp, currentUser.email).catch((err) => {
+        console.error('[App] Gagal mengirim email rekap progress harian:', err);
+      });
+
       setActiveReportModal(reportWithTimestamp);
-      showToast('Laporan progress harian berhasil disimpan!');
+      showToast(`Laporan dibuat oleh ${currentUser.email} & tersimpan aman.`);
     }
   };
 
   // Start editing a report
   const handleStartEditReport = (report: DailyReportFormData) => {
+    const author = report.authorEmail || '';
+    const canEdit = currentUser.role === 'admin' || !author || author.toLowerCase() === currentUser.email.toLowerCase();
+
+    if (!canEdit) {
+      showToast(`Akses Ditolak: Hanya pembuat (${author}) atau Admin yang dapat menyunting.`);
+      return;
+    }
+
     setFormData(report);
     setEditingReportId(report.id || 'rep-' + Date.now());
     setActiveReportModal(null);
     setIsHistoryDrawerOpen(false);
     window.scrollTo({ top: 0, behavior: 'smooth' });
-    showToast(`Mode edit aktif untuk laporan ${report.projectName || ''}`);
+    showToast(`Mode edit aktif untuk laporan: ${report.projectName || 'Project'}`);
   };
 
   // Cancel edit mode
   const handleCancelEdit = () => {
     setEditingReportId(null);
-    handleNewReport();
+    handleClearScreen('new_day');
     showToast('Mode edit dibatalkan.');
   };
 
-  // Reset to new report
-  const handleNewReport = () => {
-    setActiveReportModal(null);
-    setEditingReportId(null);
-
-    // Calculate next day number if same project has reports
-    let nextDay = '1';
+  // Helper calculate next day number if same project has reports
+  const getNextDayNumber = (projName?: string) => {
+    const targetProject = projName || formData.projectName;
+    if (!targetProject) return '1';
     const sameProjectReports = savedReports.filter(
-      (r) => r.projectName === formData.projectName
+      (r) => r.projectName === targetProject
     );
     if (sameProjectReports.length > 0) {
       const maxDay = Math.max(
         ...sameProjectReports.map((r) => parseInt(r.dayNumber || '0', 10))
       );
       if (maxDay > 0) {
-        nextDay = (maxDay + 1).toString();
+        return (maxDay + 1).toString();
       }
     }
+    const cur = parseInt(formData.dayNumber || '1', 10);
+    return (!isNaN(cur) && cur >= 1 ? cur + 1 : 1).toString();
+  };
 
-    setFormData({
-      ...INITIAL_REPORT_DATA,
-      reportDate: new Date().toISOString().split('T')[0],
-      dayNumber: nextDay,
-      projectName: formData.projectName, // preserve active project name for ease of daily logging
-      projectId: formData.projectId,
-      waspangName: formData.waspangName,
-      startDate: formData.startDate,
-      endDate: formData.endDate,
-    });
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+  // Clear Screen / New Daily Progress
+  const handleClearScreen = (mode: 'new_day' | 'full_reset') => {
+    setIsClearScreenModalOpen(false);
+    setEditingReportId(null);
+    setActiveReportModal(null);
+
+    const todayStr = new Date().toISOString().split('T')[0];
+
+    if (mode === 'new_day') {
+      const nextDay = getNextDayNumber(formData.projectName);
+      const totalBase = parseFloat(formData.totalDurasi || formData.durasiPekerjaan || '30');
+      const nextDayNum = parseInt(nextDay, 10);
+      const dayOffset = !isNaN(nextDayNum) && nextDayNum >= 1 ? nextDayNum - 1 : 0;
+      const nextDurasi = Math.max(0, totalBase - dayOffset).toString();
+
+      // Find matching project from list for base targets if available
+      const matchedProject = projects.find((p) => p.name === formData.projectName);
+      const baseSipil = matchedProject?.targetSipil || formData.baseTargetSipil || '1000';
+      const baseKabel = matchedProject?.targetKabel || formData.baseTargetKabel || '2000';
+      const baseHH = matchedProject?.targetHH || formData.baseTargetHH || '10';
+      const baseHB = matchedProject?.targetHB || formData.baseTargetHB || '10';
+      const baseMH = matchedProject?.targetMH || formData.baseTargetMH || '5';
+
+      setFormData({
+        ...INITIAL_REPORT_DATA,
+        reportDate: todayStr,
+        dayNumber: nextDay,
+        projectName: formData.projectName,
+        projectId: formData.projectId || matchedProject?.id || '',
+        waspangName: formData.waspangName || matchedProject?.pic || '',
+        startDate: matchedProject?.startDate || formData.startDate,
+        endDate: matchedProject?.endDate || formData.endDate,
+        durasiPekerjaan: nextDurasi,
+        totalDurasi: totalBase.toString(),
+        baseTargetSipil: baseSipil,
+        baseTargetKabel: baseKabel,
+        baseTargetHH: baseHH,
+        baseTargetHB: baseHB,
+        baseTargetMH: baseMH,
+        totalProgressSipil: baseSipil,
+        totalProgressKabel: baseKabel,
+        totalProgressHH: baseHH,
+        totalProgressHB: baseHB,
+        totalProgressMH: baseMH,
+      });
+
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      showToast(`Layar dibersihkan: siap input progres Hari Ke-${nextDay}`);
+    } else {
+      // Full reset to blank form
+      setFormData({
+        ...INITIAL_REPORT_DATA,
+        reportDate: todayStr,
+        dayNumber: '1',
+      });
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      showToast('Layar telah dibersihkan sepenuhnya (Reset Total).');
+    }
+  };
+
+  // Reset to new report (defaults to next day for active project)
+  const handleNewReport = () => {
+    handleClearScreen('new_day');
   };
 
   // Delete saved report
   const handleDeleteReport = (index: number) => {
     const target = savedReports[index];
+    if (!target) return;
+
+    const author = target.authorEmail || '';
+    const canDelete = currentUser.role === 'admin' || !author || author.toLowerCase() === currentUser.email.toLowerCase();
+
+    if (!canDelete) {
+      showToast(`Akses Ditolak: Hanya pembuat (${author}) atau Admin yang dapat menghapus laporan ini.`);
+      return;
+    }
+
     setSavedReports((prev) => prev.filter((_, i) => i !== index));
+
+    // Sinkronisasi hapus ke cloud
+    if (target.id) {
+      deleteReportFromCloud(target.id, currentUser).catch((err) => {
+        console.error('[App] Gagal menghapus laporan di cloud:', err);
+      });
+    }
+
     if (editingReportId && target?.id === editingReportId) {
       handleCancelEdit();
     }
@@ -289,11 +519,13 @@ export default function App() {
           
           {/* Header Component */}
           <ReportHeader
-            userEmail={userEmail}
+            userEmail={currentUser.email}
+            userRole={currentUser.role}
             onLogout={handleLogout}
             savedReportsCount={savedReports.length}
             onOpenHistory={() => setIsHistoryDrawerOpen(true)}
             onOpenProjects={() => setIsProjectModalOpen(true)}
+            onOpenClearScreen={() => setIsClearScreenModalOpen(true)}
           />
 
           {/* Body Content / Form */}
@@ -304,6 +536,7 @@ export default function App() {
               onSubmit={handleFormSubmit}
               projects={projects}
               onOpenProjectManagement={() => setIsProjectModalOpen(true)}
+              onOpenClearScreen={() => setIsClearScreenModalOpen(true)}
               isEditing={!!editingReportId}
               onCancelEdit={handleCancelEdit}
             />
@@ -312,6 +545,7 @@ export default function App() {
           {/* Modal Recap / Success Preview with WhatsApp Sharing & Edit */}
           <ReportSummaryModal
             report={activeReportModal}
+            currentUser={currentUser}
             onClose={() => setActiveReportModal(null)}
             onNewReport={handleNewReport}
             onEditReport={handleStartEditReport}
@@ -322,6 +556,7 @@ export default function App() {
             isOpen={isHistoryDrawerOpen}
             onClose={() => setIsHistoryDrawerOpen(false)}
             reports={savedReports}
+            currentUser={currentUser}
             onSelectReport={(report) => {
               setActiveReportModal(report);
             }}
@@ -340,6 +575,16 @@ export default function App() {
             onDeleteProject={handleDeleteProject}
             onSelectProject={handleSelectProject}
             currentProjectName={formData.projectName}
+          />
+
+          {/* Clear Screen Modal */}
+          <ClearScreenModal
+            isOpen={isClearScreenModalOpen}
+            onClose={() => setIsClearScreenModalOpen(false)}
+            onClearScreen={handleClearScreen}
+            projectName={formData.projectName}
+            currentDay={formData.dayNumber}
+            nextDayCalculated={getNextDayNumber(formData.projectName)}
           />
 
         </div>

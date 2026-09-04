@@ -5,8 +5,13 @@ export interface ProjectItem {
   location?: string;
   startDate?: string;
   endDate?: string;
+  durasiPekerjaan?: string;
+  totalDurasi?: string;
   targetSipil?: string;
   targetKabel?: string;
+  targetHH?: string;
+  targetHB?: string;
+  targetMH?: string;
   pic?: string;
   createdAt?: string;
 }
@@ -69,6 +74,14 @@ export interface DismantlingProgress {
   dismantleTiang: string;
 }
 
+export type UserRole = 'admin' | 'waspang';
+
+export interface CurrentUser {
+  email: string;
+  role: UserRole;
+  name?: string;
+}
+
 export interface DailyReportFormData {
   id?: string;
   projectName: string;
@@ -78,9 +91,19 @@ export interface DailyReportFormData {
   reportDate: string;
   weatherCondition: string;
   startDate: string;
-  endDate: string;
+  endDate?: string;
+  durasiPekerjaan?: string;
+  totalDurasi?: string;
   totalProgressSipil: string;
   totalProgressKabel: string;
+  totalProgressHH?: string;
+  totalProgressHB?: string;
+  totalProgressMH?: string;
+  baseTargetSipil?: string;
+  baseTargetKabel?: string;
+  baseTargetHH?: string;
+  baseTargetHB?: string;
+  baseTargetMH?: string;
   boring: BoringProgress;
   pulling: PullingProgress;
   instalasiHH: HHProgress;
@@ -92,4 +115,11 @@ export interface DailyReportFormData {
   kendalaLapangan: string;
   submittedAt?: string;
   updatedAt?: string;
+  // RBAC & Data Ownership fields
+  authorEmail?: string;
+  authorRole?: UserRole;
+  authorName?: string;
+  lastEditedBy?: string;
+  syncedToCloud?: boolean;
+  cloudSyncAt?: string;
 }

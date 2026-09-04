@@ -19,7 +19,9 @@ import {
   FolderPlus,
   Edit3,
   Check,
-  UserCheck
+  UserCheck,
+  Hash,
+  Eraser
 } from 'lucide-react';
 import { DailyReportFormData, ProjectItem } from '../types';
 import { WEATHER_OPTIONS } from '../data';
@@ -31,6 +33,7 @@ interface DailyReportFormProps {
   onSubmit: (e: React.FormEvent) => void;
   projects: ProjectItem[];
   onOpenProjectManagement: () => void;
+  onOpenClearScreen?: () => void;
   isEditing?: boolean;
   onCancelEdit?: () => void;
 }
@@ -41,6 +44,7 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
   onSubmit,
   projects,
   onOpenProjectManagement,
+  onOpenClearScreen,
   isEditing,
   onCancelEdit,
 }) => {
@@ -66,31 +70,6 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
       pits: open,
       tiangHdpe: open,
       dismantling: open,
-    });
-  };
-
-  // Helper to update top-level keys
-  const handleTopLevelChange = (field: keyof DailyReportFormData, value: string) => {
-    if (validationError) setValidationError(null);
-
-    onChange({
-      ...formData,
-      [field]: value,
-    });
-  };
-
-  // Helper to update nested object fields
-  const handleNestedChange = <T extends keyof DailyReportFormData>(
-    section: T,
-    subField: keyof DailyReportFormData[T],
-    value: string
-  ) => {
-    onChange({
-      ...formData,
-      [section]: {
-        ...(formData[section] as Record<string, string>),
-        [subField]: value,
-      },
     });
   };
 
@@ -135,12 +114,195 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
 
   const totalPitsCombined = totalHH + totalHB + totalMH + totalMB;
 
-  // Auto-sync helper: fills Total Progress Sipil with totalBoringMeters, and Total Progress Kabel with totalPullingMeters
+  // Helper to format numeric strings cleanly
+  const formatTotalValue = (val: number): string => {
+    if (isNaN(val) || val <= 0) return '0';
+    return Number.isInteger(val) ? val.toString() : parseFloat(val.toFixed(2)).toString();
+  };
+
+  // Helper to update top-level keys
+  const handleTopLevelChange = (field: keyof DailyReportFormData, value: string) => {
+    if (validationError) setValidationError(null);
+
+    // Ketika hari ke (tracker) berubah, durasi pekerjaan otomatis dikurangi
+    if (field === 'dayNumber') {
+      const newDay = parseInt(value, 10);
+      let updatedDurasi = formData.durasiPekerjaan;
+
+      const currentDurasiNum = parseFloat(formData.durasiPekerjaan || '0');
+      const currentDayNum = parseInt(formData.dayNumber || '1', 10);
+
+      // Hitung total base durasi proyek awal
+      const totalDurasiBase = formData.totalDurasi
+        ? parseFloat(formData.totalDurasi)
+        : (currentDurasiNum > 0 ? currentDurasiNum + (isNaN(currentDayNum) ? 0 : Math.max(0, currentDayNum - 1)) : 0);
+
+      if (!isNaN(newDay) && newDay >= 1 && totalDurasiBase > 0) {
+        // Durasi berkurang seiring berjalannya hari kerja
+        const remaining = Math.max(0, totalDurasiBase - (newDay - 1));
+        updatedDurasi = remaining.toString();
+      }
+
+      onChange({
+        ...formData,
+        dayNumber: value,
+        durasiPekerjaan: updatedDurasi,
+        totalDurasi: totalDurasiBase > 0 ? totalDurasiBase.toString() : formData.totalDurasi,
+      });
+      return;
+    }
+
+    // Ketika durasi pekerjaan diubah manual oleh pengawas
+    if (field === 'durasiPekerjaan') {
+      const durasiNum = parseFloat(value);
+      const dayNum = parseInt(formData.dayNumber || '1', 10);
+      let newTotal = formData.totalDurasi;
+
+      if (!isNaN(durasiNum) && durasiNum >= 0) {
+        const dayOffset = !isNaN(dayNum) && dayNum >= 1 ? dayNum - 1 : 0;
+        newTotal = (durasiNum + dayOffset).toString();
+      }
+
+      onChange({
+        ...formData,
+        durasiPekerjaan: value,
+        totalDurasi: newTotal,
+      });
+      return;
+    }
+
+    onChange({
+      ...formData,
+      [field]: value,
+    });
+  };
+
+  // Helper to update nested object fields: Key Totals terakumulasi otomatis dari Rincian Progres yang diinput
+  const handleNestedChange = <T extends keyof DailyReportFormData>(
+    section: T,
+    subField: keyof DailyReportFormData[T],
+    value: string
+  ) => {
+    // 1. Boring -> Ringkasan Capaian: Total Progress Sipil terakumulasi otomatis dari rincian boring
+    if (section === 'boring') {
+      const newBoring = {
+        ...formData.boring,
+        [subField]: value,
+      };
+      const newBoringTotal =
+        (parseFloat(newBoring.boringAlur) || 0) +
+        (parseFloat(newBoring.boringCrossingJalan) || 0) +
+        (parseFloat(newBoring.boringCrossingJalanTol) || 0) +
+        (parseFloat(newBoring.boringCrossingJembatan) || 0);
+
+      onChange({
+        ...formData,
+        boring: newBoring,
+        totalProgressSipil: formatTotalValue(newBoringTotal),
+      });
+      return;
+    }
+
+    // 2. Pulling -> Ringkasan Capaian: Total Progress Kabel terakumulasi otomatis dari rincian pulling kabel
+    if (section === 'pulling') {
+      const newPulling = {
+        ...formData.pulling,
+        [subField]: value,
+      };
+      const newPullingTotal =
+        (parseFloat(newPulling.pulling288) || 0) +
+        (parseFloat(newPulling.pulling288GL) || 0) +
+        (parseFloat(newPulling.pulling144) || 0) +
+        (parseFloat(newPulling.pulling96) || 0) +
+        (parseFloat(newPulling.pulling96GL) || 0) +
+        (parseFloat(newPulling.pulling48) || 0) +
+        (parseFloat(newPulling.pulling24) || 0);
+
+      onChange({
+        ...formData,
+        pulling: newPulling,
+        totalProgressKabel: formatTotalValue(newPullingTotal),
+      });
+      return;
+    }
+
+    // 3. Instalasi HH -> Ringkasan Capaian: Total HH terakumulasi otomatis dari rincian handhole
+    if (section === 'instalasiHH') {
+      const newHH = {
+        ...formData.instalasiHH,
+        [subField]: value,
+      };
+      const newHHTotal =
+        (parseFloat(newHH.hh60x60) || 0) +
+        (parseFloat(newHH.hh80x80) || 0) +
+        (parseFloat(newHH.hh100x100) || 0) +
+        (parseFloat(newHH.hh120x120) || 0);
+
+      onChange({
+        ...formData,
+        instalasiHH: newHH,
+        totalProgressHH: formatTotalValue(newHHTotal),
+      });
+      return;
+    }
+
+    // 4. Instalasi HB -> Ringkasan Capaian: Total HB terakumulasi otomatis dari rincian handbox
+    if (section === 'instalasiHB') {
+      const newHB = {
+        ...formData.instalasiHB,
+        [subField]: value,
+      };
+      const newHBTotal =
+        (parseFloat(newHB.hb60x60) || 0) +
+        (parseFloat(newHB.hb80x80) || 0) +
+        (parseFloat(newHB.hb100x100) || 0) +
+        (parseFloat(newHB.hb120x120) || 0);
+
+      onChange({
+        ...formData,
+        instalasiHB: newHB,
+        totalProgressHB: formatTotalValue(newHBTotal),
+      });
+      return;
+    }
+
+    // 5. Instalasi MH -> Ringkasan Capaian: Total MH terakumulasi otomatis dari rincian manhole
+    if (section === 'instalasiMH') {
+      const newMH = {
+        ...formData.instalasiMH,
+        [subField]: value,
+      };
+      const newMHTotal =
+        (parseFloat(newMH.mh80x80) || 0) +
+        (parseFloat(newMH.mh100x100) || 0) +
+        (parseFloat(newMH.mh120x120) || 0);
+
+      onChange({
+        ...formData,
+        instalasiMH: newMH,
+        totalProgressMH: formatTotalValue(newMHTotal),
+      });
+      return;
+    }
+
+    onChange({
+      ...formData,
+      [section]: {
+        ...(formData[section] as Record<string, string>),
+        [subField]: value,
+      },
+    });
+  };
+
+  // Auto-sync helper: salin ulang total akumulasi dari rincian accordion
   const handleAutoSyncTotals = () => {
     onChange({
       ...formData,
-      totalProgressSipil: totalBoringMeters.toString(),
-      totalProgressKabel: totalPullingMeters.toString(),
+      totalProgressSipil: formatTotalValue(totalBoringMeters),
+      totalProgressKabel: formatTotalValue(totalPullingMeters),
+      totalProgressHH: formatTotalValue(totalHH),
+      totalProgressHB: formatTotalValue(totalHB),
+      totalProgressMH: formatTotalValue(totalMH),
     });
   };
 
@@ -197,35 +359,77 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
               Daily Progress
             </h2>
           </div>
-          <button
-            type="button"
-            onClick={onOpenProjectManagement}
-            className="inline-flex items-center gap-1 text-[11px] font-mono-cyber px-2.5 py-1 rounded-lg bg-cyan-950/80 text-cyan-300 border border-cyan-500/40 hover:bg-cyan-900/80 transition-colors cursor-pointer"
-            title="Buka master data project"
-          >
-            <FolderPlus className="w-3.5 h-3.5 text-cyan-400" />
-            <span>Kelola Project ({projects.length})</span>
-          </button>
+          <div className="flex items-center gap-2">
+            {onOpenClearScreen && (
+              <button
+                type="button"
+                onClick={onOpenClearScreen}
+                className="inline-flex items-center gap-1 text-[11px] font-mono-cyber px-2.5 py-1 rounded-lg bg-amber-950/80 text-amber-300 border border-amber-500/40 hover:bg-amber-900/80 transition-colors cursor-pointer font-semibold shadow-sm"
+                title="Bersihkan layar untuk input daily progress baru"
+              >
+                <Eraser className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                <span>Clear Screen</span>
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={onOpenProjectManagement}
+              className="inline-flex items-center gap-1 text-[11px] font-mono-cyber px-2.5 py-1 rounded-lg bg-cyan-950/80 text-cyan-300 border border-cyan-500/40 hover:bg-cyan-900/80 transition-colors cursor-pointer"
+              title="Buka master data project"
+            >
+              <FolderPlus className="w-3.5 h-3.5 text-cyan-400" />
+              <span>Kelola Project ({projects.length})</span>
+            </button>
+          </div>
         </div>
 
-        {/* 1. Input Nama Project & Nama Waspang */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+        {/* 1. Input Project ID, Nama Project & Nama Waspang */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
+          {/* Project ID */}
+          <div>
+            <div className="flex items-center justify-between mb-1.5 h-5">
+              <label 
+                htmlFor="input-project-id" 
+                className="flex items-center gap-1.5 text-xs font-mono-cyber text-cyan-300 uppercase tracking-wider font-semibold truncate"
+              >
+                <Hash className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                <span className="truncate">Project ID</span>
+              </label>
+              {formData.projectId && (
+                <span className="text-[10px] font-mono-cyber text-cyan-300 bg-cyan-950/80 border border-cyan-500/40 px-1.5 py-0.2 rounded shrink-0">
+                  ID Aktif
+                </span>
+              )}
+            </div>
+            
+            <div className="relative">
+              <input
+                id="input-project-id"
+                type="text"
+                value={formData.projectId || ''}
+                onChange={(e) => handleTopLevelChange('projectId', e.target.value)}
+                placeholder="Contoh: PRJ-001"
+                className="w-full h-10 bg-[#050b14] border border-cyan-500/40 focus:border-cyan-400 rounded-xl px-3.5 text-xs sm:text-sm text-slate-100 font-mono-cyber focus:outline-none focus:ring-1 focus:ring-cyan-400 transition-colors"
+              />
+            </div>
+          </div>
+
           {/* Input Nama Project Manual */}
           <div>
             <div className="flex items-center justify-between mb-1.5 h-5">
               <label 
                 htmlFor="input-project-name" 
-                className="flex items-center gap-1.5 text-xs font-mono-cyber text-cyan-300 uppercase tracking-wider font-semibold"
+                className="flex items-center gap-1.5 text-xs font-mono-cyber text-cyan-300 uppercase tracking-wider font-semibold truncate"
               >
                 <Building2 className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
-                <span>Nama Project <span className="text-amber-400">*</span></span>
+                <span className="truncate">Nama Project <span className="text-amber-400">*</span></span>
               </label>
               <button
                 type="button"
                 onClick={onOpenProjectManagement}
-                className="text-[11px] font-mono-cyber text-cyan-400 hover:text-cyan-300 font-semibold"
+                className="text-[11px] font-mono-cyber text-cyan-400 hover:text-cyan-300 font-semibold cursor-pointer shrink-0 ml-1"
               >
-                + Tambah Master
+                + Master
               </button>
             </div>
             
@@ -247,10 +451,10 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
             <div className="flex items-center justify-between mb-1.5 h-5">
               <label 
                 htmlFor="input-waspang-name" 
-                className="flex items-center gap-1.5 text-xs font-mono-cyber text-cyan-300 uppercase tracking-wider font-semibold"
+                className="flex items-center gap-1.5 text-xs font-mono-cyber text-cyan-300 uppercase tracking-wider font-semibold truncate"
               >
                 <UserCheck className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
-                <span>Nama Waspang (Pengawas Lapangan)</span>
+                <span className="truncate">Waspang (Pengawas)</span>
               </label>
             </div>
             
@@ -276,13 +480,20 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
                 key={p.id}
                 type="button"
                 onClick={() => {
+                  const projectTotalDurasi = p.durasiPekerjaan || p.totalDurasi || formData.totalDurasi || '30';
+                  const curDay = parseInt(formData.dayNumber || '1', 10);
+                  const dayOffset = !isNaN(curDay) && curDay >= 1 ? curDay - 1 : 0;
+                  const computedDurasi = Math.max(0, parseFloat(projectTotalDurasi) - dayOffset).toString();
+
                   onChange({
                     ...formData,
                     projectName: p.name,
-                    projectId: p.id,
+                    projectId: p.code || p.id,
                     waspangName: p.pic || formData.waspangName || '',
                     startDate: p.startDate || formData.startDate,
                     endDate: p.endDate || formData.endDate,
+                    durasiPekerjaan: computedDurasi,
+                    totalDurasi: projectTotalDurasi,
                   });
                 }}
                 className={`px-2.5 py-1 rounded-lg text-[11px] font-mono-cyber transition-all border cursor-pointer ${
@@ -291,7 +502,7 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
                     : 'bg-slate-800/90 text-slate-300 border-slate-700 hover:border-cyan-500/50 hover:text-white'
                 }`}
               >
-                {p.name}
+                {p.code ? `[${p.code}] ${p.name}` : p.name}
               </button>
             ))}
           </div>
@@ -371,14 +582,14 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
           </div>
         </div>
 
-        {/* 3. Tanggal Start Project & End Project */}
+        {/* 3. Tanggal Start Project & Durasi Pekerjaan */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-2 border-t border-slate-800/80">
           <div className="flex flex-col">
             <label 
               htmlFor="input-start-date" 
               className="h-5 flex items-center gap-1.5 text-xs font-mono-cyber text-slate-300 uppercase tracking-wider mb-1.5"
             >
-              <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+              <Calendar className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
               <span>Tanggal Start Project</span>
             </label>
             <input
@@ -391,45 +602,69 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
           </div>
 
           <div className="flex flex-col">
-            <label 
-              htmlFor="input-end-date" 
-              className="h-5 flex items-center gap-1.5 text-xs font-mono-cyber text-slate-300 uppercase tracking-wider mb-1.5"
-            >
-              <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-              <span>Tanggal End Project</span>
-            </label>
-            <input
-              id="input-end-date"
-              type="date"
-              value={formData.endDate}
-              onChange={(e) => handleTopLevelChange('endDate', e.target.value)}
-              className="w-full h-10 bg-[#050b14] border border-slate-700/80 focus:border-cyan-400 rounded-xl px-3 text-xs sm:text-sm text-slate-100 font-mono-cyber focus:outline-none focus:ring-1 focus:ring-cyan-400 transition-colors"
-            />
+            <div className="h-5 flex items-center justify-between mb-1.5">
+              <label 
+                htmlFor="input-durasi-pekerjaan" 
+                className="flex items-center gap-1.5 text-xs font-mono-cyber text-slate-300 uppercase tracking-wider"
+              >
+                <Clock className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                <span>Durasi Pekerjaan (Hari)</span>
+              </label>
+              {formData.totalDurasi && Number(formData.totalDurasi) > 0 && (
+                <span className="text-[10px] font-mono-cyber text-emerald-400/90 bg-emerald-950/70 px-1.5 py-0.2 rounded border border-emerald-500/30">
+                  Total: {formData.totalDurasi} Hari
+                </span>
+              )}
+            </div>
+            <div className="relative flex items-center">
+              <input
+                id="input-durasi-pekerjaan"
+                type="number"
+                min="0"
+                value={formData.durasiPekerjaan ?? ''}
+                onChange={(e) => handleTopLevelChange('durasiPekerjaan', e.target.value)}
+                placeholder={formData.totalDurasi || '30'}
+                className="w-full h-10 bg-[#050b14] border border-slate-700/80 focus:border-cyan-400 rounded-xl pl-3 pr-16 text-xs sm:text-sm text-slate-100 font-mono-cyber font-bold focus:outline-none focus:ring-1 focus:ring-cyan-400 transition-colors"
+              />
+              <span className="absolute right-2.5 px-2 py-0.5 text-xs font-mono-cyber font-semibold text-emerald-300 bg-emerald-950/90 border border-emerald-500/40 rounded pointer-events-none">
+                Hari
+              </span>
+            </div>
+            <span className="text-[10px] text-slate-400 mt-1 font-mono-cyber leading-tight">
+              {formData.totalDurasi && Number(formData.totalDurasi) > 0
+                ? `Tersisa ${formData.durasiPekerjaan || 0} hari kerja (otomatis berkurang sesuai Hari Ke- tracker)`
+                : `Durasi pekerjaan otomatis berkurang seiring perubahan Hari Ke- (Tracker)`}
+            </span>
           </div>
         </div>
 
         {/* 4. Total Progress Sipil & Total Progress Kabel */}
         <div className="pt-2 border-t border-slate-800/80">
-          <div className="flex items-center justify-between mb-2.5">
-            <span className="text-xs font-cyber uppercase tracking-wider text-slate-200 font-semibold flex items-center gap-1.5">
-              <Layers className="w-3.5 h-3.5 text-cyan-400" />
-              <span>Ringkasan Capaian Harian (Key Totals)</span>
-            </span>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2.5">
+            <div>
+              <span className="text-xs font-cyber uppercase tracking-wider text-slate-200 font-semibold flex items-center gap-1.5">
+                <Layers className="w-3.5 h-3.5 text-cyan-400" />
+                <span>Ringkasan Capaian Harian (Key Totals)</span>
+              </span>
+              <p className="text-[10px] font-mono-cyber text-emerald-400/90 mt-0.5">
+                ⚡ Otomatis bertambah sesuai jumlah data yang diinput pada Rincian Progres Harian Lapangan
+              </p>
+            </div>
             <button
               type="button"
               onClick={handleAutoSyncTotals}
-              className="inline-flex items-center gap-1.5 text-[11px] font-mono-cyber text-cyan-400 hover:text-cyan-300 bg-cyan-950/70 hover:bg-cyan-900/70 px-2.5 py-1 rounded-lg border border-cyan-500/40 transition-colors cursor-pointer font-medium"
-              title="Salin total dari rincian accordion otomatis"
+              className="self-start sm:self-auto inline-flex items-center gap-1.5 text-[11px] font-mono-cyber text-cyan-400 hover:text-cyan-300 bg-cyan-950/70 hover:bg-cyan-900/70 px-2.5 py-1 rounded-lg border border-cyan-500/40 transition-colors cursor-pointer font-medium"
+              title="Salin ulang total akumulasi dari rincian accordion otomatis"
             >
               <Calculator className="w-3.5 h-3.5" />
-              <span>Hitung dari Rincian</span>
+              <span>Hitung Ulang dari Rincian</span>
             </button>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
             {/* Total Progress Sipil Card */}
             <div className="p-3 rounded-xl bg-[#060c18] border border-cyan-500/30 flex flex-col justify-between">
-              <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center justify-between mb-1.5">
                 <label 
                   htmlFor="input-total-sipil" 
                   className="flex items-center gap-1.5 text-xs font-mono-cyber text-cyan-300 uppercase tracking-wider font-semibold"
@@ -437,6 +672,9 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
                   <span className="w-2 h-2 rounded-full bg-cyan-400 shrink-0" />
                   <span>Total Progress Sipil</span>
                 </label>
+                <span className="text-[10px] font-mono-cyber text-cyan-400/80 bg-cyan-950/60 px-1.5 py-0.5 rounded border border-cyan-500/20">
+                  Akumulasi Boring
+                </span>
               </div>
               <div className="relative flex items-center h-10">
                 <input
@@ -446,18 +684,24 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
                   min="0"
                   value={formData.totalProgressSipil}
                   onChange={(e) => handleTopLevelChange('totalProgressSipil', e.target.value)}
-                  placeholder="0"
+                  placeholder={totalBoringMeters > 0 ? totalBoringMeters.toString() : '0'}
                   className="w-full h-10 bg-[#091224] border border-cyan-500/40 focus:border-cyan-400 rounded-lg pl-3 pr-16 text-sm sm:text-base font-bold font-mono-cyber text-white focus:outline-none focus:ring-1 focus:ring-cyan-400 transition-colors"
                 />
                 <span className="absolute right-2.5 px-2 py-0.5 text-[11px] font-mono-cyber font-semibold text-cyan-300 bg-cyan-950/90 border border-cyan-500/40 rounded pointer-events-none">
                   Meter
                 </span>
               </div>
+              <div className="flex items-center justify-between mt-1 text-[10px] font-mono-cyber text-slate-400">
+                <span>Akumulasi Boring: {totalBoringMeters} m</span>
+                {totalBoringMeters > 0 && (
+                  <span className="text-emerald-400 font-semibold">Tersinkronisasi</span>
+                )}
+              </div>
             </div>
 
             {/* Total Progress Kabel Card */}
             <div className="p-3 rounded-xl bg-[#060c18] border border-emerald-500/30 flex flex-col justify-between">
-              <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center justify-between mb-1.5">
                 <label 
                   htmlFor="input-total-kabel" 
                   className="flex items-center gap-1.5 text-xs font-mono-cyber text-emerald-300 uppercase tracking-wider font-semibold"
@@ -465,6 +709,9 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
                   <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0" />
                   <span>Total Progress Kabel</span>
                 </label>
+                <span className="text-[10px] font-mono-cyber text-emerald-400/80 bg-emerald-950/60 px-1.5 py-0.5 rounded border border-emerald-500/20">
+                  Akumulasi Pulling
+                </span>
               </div>
               <div className="relative flex items-center h-10">
                 <input
@@ -474,12 +721,126 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
                   min="0"
                   value={formData.totalProgressKabel}
                   onChange={(e) => handleTopLevelChange('totalProgressKabel', e.target.value)}
-                  placeholder="0"
+                  placeholder={totalPullingMeters > 0 ? totalPullingMeters.toString() : '0'}
                   className="w-full h-10 bg-[#091224] border border-emerald-500/40 focus:border-emerald-400 rounded-lg pl-3 pr-16 text-sm sm:text-base font-bold font-mono-cyber text-white focus:outline-none focus:ring-1 focus:ring-emerald-400 transition-colors"
                 />
                 <span className="absolute right-2.5 px-2 py-0.5 text-[11px] font-mono-cyber font-semibold text-emerald-300 bg-emerald-950/90 border border-emerald-500/40 rounded pointer-events-none">
                   Meter
                 </span>
+              </div>
+              <div className="flex items-center justify-between mt-1 text-[10px] font-mono-cyber text-slate-400">
+                <span>Akumulasi Pulling: {totalPullingMeters} m</span>
+                {totalPullingMeters > 0 && (
+                  <span className="text-emerald-400 font-semibold">Tersinkronisasi</span>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Pit Key Totals: HH, HB, MH (Pcs) */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {/* Total Handhole (HH) */}
+            <div className="p-3 rounded-xl bg-[#060c18] border border-amber-500/30 flex flex-col justify-between">
+              <div className="flex items-center justify-between mb-1.5">
+                <label 
+                  htmlFor="input-total-hh" 
+                  className="flex items-center gap-1.5 text-xs font-mono-cyber text-amber-300 uppercase tracking-wider font-semibold"
+                >
+                  <span className="w-2 h-2 rounded-full bg-amber-400 shrink-0" />
+                  <span>Total HH (Handhole)</span>
+                </label>
+                <span className="text-[10px] font-mono-cyber text-amber-400/80 bg-amber-950/60 px-1.5 py-0.5 rounded border border-amber-500/20">
+                  Akumulasi HH
+                </span>
+              </div>
+              <div className="relative flex items-center h-10">
+                <input
+                  id="input-total-hh"
+                  type="number"
+                  step="any"
+                  min="0"
+                  value={formData.totalProgressHH ?? ''}
+                  onChange={(e) => handleTopLevelChange('totalProgressHH', e.target.value)}
+                  placeholder={totalHH > 0 ? totalHH.toString() : '0'}
+                  className="w-full h-10 bg-[#091224] border border-amber-500/40 focus:border-amber-400 rounded-lg pl-3 pr-14 text-sm sm:text-base font-bold font-mono-cyber text-white focus:outline-none focus:ring-1 focus:ring-amber-400 transition-colors"
+                />
+                <span className="absolute right-2.5 px-2 py-0.5 text-[11px] font-mono-cyber font-semibold text-amber-300 bg-amber-950/90 border border-amber-500/40 rounded pointer-events-none">
+                  Pcs
+                </span>
+              </div>
+              <div className="flex items-center justify-between mt-1 text-[10px] font-mono-cyber text-slate-400">
+                <span>Akumulasi HH: {totalHH} Pcs</span>
+                {totalHH > 0 && <span className="text-emerald-400 font-semibold">Tersinkronisasi</span>}
+              </div>
+            </div>
+
+            {/* Total Handbox (HB) */}
+            <div className="p-3 rounded-xl bg-[#060c18] border border-orange-500/30 flex flex-col justify-between">
+              <div className="flex items-center justify-between mb-1.5">
+                <label 
+                  htmlFor="input-total-hb" 
+                  className="flex items-center gap-1.5 text-xs font-mono-cyber text-orange-300 uppercase tracking-wider font-semibold"
+                >
+                  <span className="w-2 h-2 rounded-full bg-orange-400 shrink-0" />
+                  <span>Total HB (Handbox)</span>
+                </label>
+                <span className="text-[10px] font-mono-cyber text-orange-400/80 bg-orange-950/60 px-1.5 py-0.5 rounded border border-orange-500/20">
+                  Akumulasi HB
+                </span>
+              </div>
+              <div className="relative flex items-center h-10">
+                <input
+                  id="input-total-hb"
+                  type="number"
+                  step="any"
+                  min="0"
+                  value={formData.totalProgressHB ?? ''}
+                  onChange={(e) => handleTopLevelChange('totalProgressHB', e.target.value)}
+                  placeholder={totalHB > 0 ? totalHB.toString() : '0'}
+                  className="w-full h-10 bg-[#091224] border border-orange-500/40 focus:border-orange-400 rounded-lg pl-3 pr-14 text-sm sm:text-base font-bold font-mono-cyber text-white focus:outline-none focus:ring-1 focus:ring-orange-400 transition-colors"
+                />
+                <span className="absolute right-2.5 px-2 py-0.5 text-[11px] font-mono-cyber font-semibold text-orange-300 bg-orange-950/90 border border-orange-500/40 rounded pointer-events-none">
+                  Pcs
+                </span>
+              </div>
+              <div className="flex items-center justify-between mt-1 text-[10px] font-mono-cyber text-slate-400">
+                <span>Akumulasi HB: {totalHB} Pcs</span>
+                {totalHB > 0 && <span className="text-emerald-400 font-semibold">Tersinkronisasi</span>}
+              </div>
+            </div>
+
+            {/* Total Manhole (MH) */}
+            <div className="p-3 rounded-xl bg-[#060c18] border border-purple-500/30 flex flex-col justify-between">
+              <div className="flex items-center justify-between mb-1.5">
+                <label 
+                  htmlFor="input-total-mh" 
+                  className="flex items-center gap-1.5 text-xs font-mono-cyber text-purple-300 uppercase tracking-wider font-semibold"
+                >
+                  <span className="w-2 h-2 rounded-full bg-purple-400 shrink-0" />
+                  <span>Total MH (Manhole)</span>
+                </label>
+                <span className="text-[10px] font-mono-cyber text-purple-400/80 bg-purple-950/60 px-1.5 py-0.5 rounded border border-purple-500/20">
+                  Akumulasi MH
+                </span>
+              </div>
+              <div className="relative flex items-center h-10">
+                <input
+                  id="input-total-mh"
+                  type="number"
+                  step="any"
+                  min="0"
+                  value={formData.totalProgressMH ?? ''}
+                  onChange={(e) => handleTopLevelChange('totalProgressMH', e.target.value)}
+                  placeholder={totalMH > 0 ? totalMH.toString() : '0'}
+                  className="w-full h-10 bg-[#091224] border border-purple-500/40 focus:border-purple-400 rounded-lg pl-3 pr-14 text-sm sm:text-base font-bold font-mono-cyber text-white focus:outline-none focus:ring-1 focus:ring-purple-400 transition-colors"
+                />
+                <span className="absolute right-2.5 px-2 py-0.5 text-[11px] font-mono-cyber font-semibold text-purple-300 bg-purple-950/90 border border-purple-500/40 rounded pointer-events-none">
+                  Pcs
+                </span>
+              </div>
+              <div className="flex items-center justify-between mt-1 text-[10px] font-mono-cyber text-slate-400">
+                <span>Akumulasi MH: {totalMH} Pcs</span>
+                {totalMH > 0 && <span className="text-emerald-400 font-semibold">Tersinkronisasi</span>}
               </div>
             </div>
           </div>
@@ -1335,6 +1696,18 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
               className="py-2.5 px-3.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-cyber text-xs border border-slate-700 active:scale-95 transition-all cursor-pointer shrink-0"
             >
               Batal
+            </button>
+          )}
+
+          {onOpenClearScreen && (
+            <button
+              type="button"
+              onClick={onOpenClearScreen}
+              className="py-2.5 px-3 rounded-xl bg-amber-950/70 hover:bg-amber-900/80 text-amber-300 hover:text-amber-200 font-cyber text-xs border border-amber-500/40 active:scale-95 transition-all cursor-pointer shrink-0 flex items-center gap-1.5 shadow-sm"
+              title="Bersihkan layar untuk membuat daily progress baru"
+            >
+              <Eraser className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+              <span className="hidden xs:inline font-semibold">Clear Screen</span>
             </button>
           )}
 

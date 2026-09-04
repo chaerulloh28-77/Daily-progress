@@ -13,7 +13,8 @@ import {
   AlertTriangle,
   ArrowRight,
   User,
-  Layers
+  Layers,
+  Clock
 } from 'lucide-react';
 import { ProjectItem } from '../types';
 
@@ -45,6 +46,7 @@ export const ProjectManagementModal: React.FC<ProjectManagementModalProps> = ({
   const [location, setLocation] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [durasiPekerjaan, setDurasiPekerjaan] = useState('30');
   const [targetSipil, setTargetSipil] = useState('');
   const [targetKabel, setTargetKabel] = useState('');
   const [pic, setPic] = useState('');
@@ -61,6 +63,7 @@ export const ProjectManagementModal: React.FC<ProjectManagementModalProps> = ({
     setLocation('');
     setStartDate('');
     setEndDate('');
+    setDurasiPekerjaan('30');
     setTargetSipil('');
     setTargetKabel('');
     setPic('');
@@ -80,6 +83,7 @@ export const ProjectManagementModal: React.FC<ProjectManagementModalProps> = ({
     setLocation(proj.location || '');
     setStartDate(proj.startDate || '');
     setEndDate(proj.endDate || '');
+    setDurasiPekerjaan(proj.durasiPekerjaan || '30');
     setTargetSipil(proj.targetSipil || '');
     setTargetKabel(proj.targetKabel || '');
     setPic(proj.pic || '');
@@ -104,6 +108,8 @@ export const ProjectManagementModal: React.FC<ProjectManagementModalProps> = ({
         location: location.trim() || undefined,
         startDate: startDate || undefined,
         endDate: endDate || undefined,
+        durasiPekerjaan: durasiPekerjaan || '30',
+        totalDurasi: durasiPekerjaan || '30',
         targetSipil: targetSipil || undefined,
         targetKabel: targetKabel || undefined,
         pic: pic.trim() || undefined,
@@ -118,6 +124,8 @@ export const ProjectManagementModal: React.FC<ProjectManagementModalProps> = ({
         location: location.trim() || undefined,
         startDate: startDate || undefined,
         endDate: endDate || undefined,
+        durasiPekerjaan: durasiPekerjaan || '30',
+        totalDurasi: durasiPekerjaan || '30',
         targetSipil: targetSipil || undefined,
         targetKabel: targetKabel || undefined,
         pic: pic.trim() || undefined,
@@ -267,13 +275,15 @@ export const ProjectManagementModal: React.FC<ProjectManagementModalProps> = ({
                 </div>
                 <div>
                   <label className="flex items-center gap-1.5 text-xs font-mono-cyber text-slate-300 mb-1">
-                    <Calendar className="w-3.5 h-3.5 text-white shrink-0" />
-                    <span>Target Tanggal Selesai</span>
+                    <Clock className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                    <span>Durasi Pekerjaan (Hari)</span>
                   </label>
                   <input
-                    type="date"
-                    value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
+                    type="number"
+                    min="1"
+                    value={durasiPekerjaan}
+                    onChange={(e) => setDurasiPekerjaan(e.target.value)}
+                    placeholder="Misal: 30"
                     className="w-full bg-[#091224] border border-slate-700 focus:border-cyan-400 rounded-lg px-2.5 py-1.5 text-xs font-mono-cyber text-white focus:outline-none"
                   />
                 </div>
@@ -412,13 +422,15 @@ export const ProjectManagementModal: React.FC<ProjectManagementModalProps> = ({
                   </div>
 
                   {/* Dates & targets */}
-                  {(proj.startDate || proj.endDate || proj.targetSipil || proj.targetKabel) && (
+                  {(proj.startDate || proj.durasiPekerjaan || proj.endDate || proj.targetSipil || proj.targetKabel) && (
                     <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-800/80 text-[11px] font-mono-cyber text-slate-400">
-                      <div className="flex items-center gap-1.5">
-                        <Calendar className="w-3 h-3 text-white shrink-0" />
-                        <span>Periode: <span className="text-slate-200">{proj.startDate || '-'} s/d {proj.endDate || '-'}</span></span>
+                      <div className="flex items-center gap-1.5 truncate">
+                        <Clock className="w-3 h-3 text-emerald-400 shrink-0" />
+                        <span className="truncate">
+                          Durasi: <span className="text-slate-200">{proj.durasiPekerjaan ? `${proj.durasiPekerjaan} Hari` : (proj.endDate ? `s/d ${proj.endDate}` : '-')}</span>
+                        </span>
                       </div>
-                      <div className="text-right">
+                      <div className="text-right truncate">
                         Target: <span className="text-cyan-400">{proj.targetSipil ? `${proj.targetSipil}m Sipil` : ''}</span>
                         {proj.targetKabel && <span className="text-emerald-400 ml-1">/ {proj.targetKabel}m Kabel</span>}
                       </div>

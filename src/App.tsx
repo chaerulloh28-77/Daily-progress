@@ -18,21 +18,19 @@ import {
 import { syncReportToCloud, deleteReportFromCloud } from './services/cloudSync';
 
 export default function App() {
-  // Auth state: dummy login as requested
-  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => {
-    return localStorage.getItem('gov_logged_in') === 'true';
-  });
+  // Auth state: Routing utama (/) langsung merender LoginPage tanpa splash screen atau intro
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
   const [userEmail, setUserEmail] = useState<string>(() => {
-    return localStorage.getItem('gov_user_email') || 'pengawas.lapangan@gov-network.id';
+    return localStorage.getItem('gov_user_email') || '';
   });
   const [currentUser, setCurrentUser] = useState<CurrentUser>(() => {
-    const email = localStorage.getItem('gov_user_email') || 'pengawas.lapangan@gov-network.id';
+    const email = localStorage.getItem('gov_user_email') || '';
     const savedRole = localStorage.getItem('gov_user_role') as UserRole;
     const role: UserRole = savedRole || (email.trim().toLowerCase() === 'admin@gov.com' ? 'admin' : 'waspang');
     return {
       email,
       role,
-      name: role === 'admin' ? 'Administrator' : email.split('@')[0],
+      name: role === 'admin' ? 'Administrator' : (email ? email.split('@')[0] : 'Pengawas'),
     };
   });
 

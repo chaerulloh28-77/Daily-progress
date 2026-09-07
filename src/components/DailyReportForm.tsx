@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Building2, 
   Calendar, 
@@ -21,11 +21,55 @@ import {
   Check,
   UserCheck,
   Hash,
-  Eraser
+  Eraser,
+  Lock,
+  MapPin
 } from 'lucide-react';
 import { DailyReportFormData, ProjectItem } from '../types';
-import { WEATHER_OPTIONS } from '../data';
+import { WEATHER_OPTIONS, AREA_OPTIONS } from '../data';
 import { AccordionSection } from './AccordionSection';
+
+/**
+ * Safely parses a YYYY-MM-DD string into a UTC midnight Date object
+ * to prevent timezone-related off-by-one errors.
+ */
+const parseDateSafely = (dateStr?: string): Date | null => {
+  if (!dateStr || typeof dateStr !== 'string') return null;
+  const parts = dateStr.trim().split('-');
+  if (parts.length !== 3) return null;
+  const year = parseInt(parts[0], 10);
+  const month = parseInt(parts[1], 10) - 1;
+  const day = parseInt(parts[2], 10);
+  if (isNaN(year) || isNaN(month) || isNaN(day)) return null;
+  if (year < 1970 || year > 2150 || month < 0 || month > 11 || day < 1 || day > 31) return null;
+  const dt = new Date(Date.UTC(year, month, day));
+  return isNaN(dt.getTime()) ? null : dt;
+};
+
+/**
+ * Calculates day difference using standard JavaScript Date:
+ * Math.floor((dateLaporan - dateStart) / (1000 * 60 * 60 * 24)) + 1
+ * Clamps to minimum 1 if dateLaporan is earlier than dateStart, and flags isNegative.
+ */
+const calculateDaysDiff = (
+  reportDateStr?: string, 
+  startDateStr?: string
+): { days: number; rawDiff: number; isNegative: boolean } | null => {
+  const dateLaporan = parseDateSafely(reportDateStr);
+  const dateStart = parseDateSafely(startDateStr);
+  if (!dateLaporan || !dateStart) return null;
+
+  const diffMs = dateLaporan.getTime() - dateStart.getTime();
+  const rawDiff = Math.floor(diffMs / (1000 * 60 * 60 * 24)) + 1;
+  if (isNaN(rawDiff)) return null;
+
+  const isNegative = rawDiff < 1;
+  const days = isNegative ? 1 : rawDiff;
+  return { days, rawDiff, isNegative };
+};
+
+// Tetapkan Konstanta Durasi: angka pasti 90 sebagai total durasi master paten
+const TOTAL_DURASI_MASTER = 90;
 
 interface DailyReportFormProps {
   formData: DailyReportFormData;
@@ -112,6 +156,8 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
     (parseFloat(formData.pulling.pulling48) || 0) +
     (parseFloat(formData.pulling.pulling24) || 0);
 
+  const totalPullingCoaxMeters = parseFloat(formData.pulling?.pullingCoax || '0') || 0;
+
   const totalPitsCombined = totalHH + totalHB + totalMH + totalMB;
 
   // Helper to format numeric strings cleanly
@@ -120,54 +166,117 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
     return Number.isInteger(val) ? val.toString() : parseFloat(val.toFixed(2)).toString();
   };
 
+  // 1. State Peringatan (Overdue) dan Simpan ref ke formData untuk mencegah infinite loop
+  const [isOverdue, setIsOverdue] = useState<boolean>(() => {
+    const initHariKe = parseInt(formData.dayNumber || '1', 10);
+    return !isNaN(initHariKe) && initHariKe > TOTAL_DURASI_MASTER;
+  });
+
+  const formDataRef = useRef(formData);
+  formDataRef.current = formData;
+
+  // Parsing hariKe secara aman (minimal 1, hindari NaN atau minus)
+  const rawHariKe = parseInt(formData.dayNumber || '1', 10);
+  const hariKe = !isNaN(rawHariKe) && rawHariKe >= 1 ? rawHariKe : 1;
+
+  // 2. Kalkulasi Sisa Durasi yang Aman & State Peringatan (Overdue)
+  // Hanya memantau dependensi [hariKe] sesuai instruksi paten
+  useEffect(() => {
+    const sisa = TOTAL_DURASI_MASTER - hariKe;
+    const computedSisa = Math.max(0, sisa);
+    const computedSisaStr = computedSisa.toString();
+
+    // Kondisi Overdue jika hariKe > TOTAL_DURASI_MASTER
+    if (hariKe > TOTAL_DURASI_MASTER) {
+      setIsOverdue(true);
+    } else {
+      setIsOverdue(false);
+    }
+
+    // Update state sisa durasi (durasiPekerjaan) jika nilainya belum sinkron
+    if (
+      formDataRef.current.durasiPekerjaan !== computedSisaStr ||
+      formDataRef.current.totalDurasi !== TOTAL_DURASI_MASTER.toString()
+    ) {
+      onChange({
+        ...formDataRef.current,
+        durasiPekerjaan: computedSisaStr,
+        totalDurasi: TOTAL_DURASI_MASTER.toString(),
+      });
+    }
+  }, [hariKe]);
+
+  // 3. Perhitungan Otomatis Hari Ke- (Tracker) saat Tanggal Laporan / Start Project berubah
+  const lastSyncedDatesRef = useRef<{ reportDate: string; startDate: string }>({
+    reportDate: '',
+    startDate: '',
+  });
+
+  useEffect(() => {
+    const diffInfo = calculateDaysDiff(formData.reportDate, formData.startDate);
+    if (!diffInfo) return;
+
+    const datesChanged =
+      lastSyncedDatesRef.current.reportDate !== formData.reportDate ||
+      lastSyncedDatesRef.current.startDate !== formData.startDate;
+
+    if (datesChanged) {
+      lastSyncedDatesRef.current = {
+        reportDate: formData.reportDate,
+        startDate: formData.startDate,
+      };
+
+      const calculatedDayStr = diffInfo.days.toString();
+      if (formDataRef.current.dayNumber !== calculatedDayStr) {
+        onChange({
+          ...formDataRef.current,
+          dayNumber: calculatedDayStr,
+        });
+      }
+    }
+  }, [formData.reportDate, formData.startDate]);
+
+  const handleSyncHariKeFromDates = () => {
+    const diffInfo = calculateDaysDiff(formData.reportDate, formData.startDate);
+    if (!diffInfo) return;
+
+    const calculatedDayStr = diffInfo.days.toString();
+    lastSyncedDatesRef.current = {
+      reportDate: formData.reportDate,
+      startDate: formData.startDate,
+    };
+
+    const sisa = Math.max(0, TOTAL_DURASI_MASTER - diffInfo.days);
+
+    onChange({
+      ...formData,
+      dayNumber: calculatedDayStr,
+      durasiPekerjaan: sisa.toString(),
+      totalDurasi: TOTAL_DURASI_MASTER.toString(),
+    });
+  };
+
   // Helper to update top-level keys
   const handleTopLevelChange = (field: keyof DailyReportFormData, value: string) => {
     if (validationError) setValidationError(null);
 
-    // Ketika hari ke (tracker) berubah, durasi pekerjaan otomatis dikurangi
+    // Ketika hari ke (tracker) diubah, update dayNumber dan langsung hitung sisa durasi dari TOTAL_DURASI_MASTER
     if (field === 'dayNumber') {
       const newDay = parseInt(value, 10);
-      let updatedDurasi = formData.durasiPekerjaan;
-
-      const currentDurasiNum = parseFloat(formData.durasiPekerjaan || '0');
-      const currentDayNum = parseInt(formData.dayNumber || '1', 10);
-
-      // Hitung total base durasi proyek awal
-      const totalDurasiBase = formData.totalDurasi
-        ? parseFloat(formData.totalDurasi)
-        : (currentDurasiNum > 0 ? currentDurasiNum + (isNaN(currentDayNum) ? 0 : Math.max(0, currentDayNum - 1)) : 0);
-
-      if (!isNaN(newDay) && newDay >= 1 && totalDurasiBase > 0) {
-        // Durasi berkurang seiring berjalannya hari kerja
-        const remaining = Math.max(0, totalDurasiBase - (newDay - 1));
-        updatedDurasi = remaining.toString();
-      }
+      const validDay = !isNaN(newDay) && newDay >= 1 ? newDay : 1;
+      const sisa = Math.max(0, TOTAL_DURASI_MASTER - validDay);
 
       onChange({
         ...formData,
         dayNumber: value,
-        durasiPekerjaan: updatedDurasi,
-        totalDurasi: totalDurasiBase > 0 ? totalDurasiBase.toString() : formData.totalDurasi,
+        durasiPekerjaan: sisa.toString(),
+        totalDurasi: TOTAL_DURASI_MASTER.toString(),
       });
       return;
     }
 
-    // Ketika durasi pekerjaan diubah manual oleh pengawas
+    // Durasi pekerjaan otomatis dikunci dan dihitung dari acuan paten 90 hari
     if (field === 'durasiPekerjaan') {
-      const durasiNum = parseFloat(value);
-      const dayNum = parseInt(formData.dayNumber || '1', 10);
-      let newTotal = formData.totalDurasi;
-
-      if (!isNaN(durasiNum) && durasiNum >= 0) {
-        const dayOffset = !isNaN(dayNum) && dayNum >= 1 ? dayNum - 1 : 0;
-        newTotal = (durasiNum + dayOffset).toString();
-      }
-
-      onChange({
-        ...formData,
-        durasiPekerjaan: value,
-        totalDurasi: newTotal,
-      });
       return;
     }
 
@@ -218,10 +327,13 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
         (parseFloat(newPulling.pulling48) || 0) +
         (parseFloat(newPulling.pulling24) || 0);
 
+      const newCoaxTotal = parseFloat(newPulling.pullingCoax || '0') || 0;
+
       onChange({
         ...formData,
         pulling: newPulling,
         totalProgressKabel: formatTotalValue(newPullingTotal),
+        totalProgressKabelCoax: formatTotalValue(newCoaxTotal),
       });
       return;
     }
@@ -300,6 +412,7 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
       ...formData,
       totalProgressSipil: formatTotalValue(totalBoringMeters),
       totalProgressKabel: formatTotalValue(totalPullingMeters),
+      totalProgressKabelCoax: formatTotalValue(totalPullingCoaxMeters),
       totalProgressHH: formatTotalValue(totalHH),
       totalProgressHB: formatTotalValue(totalHB),
       totalProgressMH: formatTotalValue(totalMH),
@@ -383,8 +496,8 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
           </div>
         </div>
 
-        {/* 1. Input Project ID, Nama Project & Nama Waspang */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
+        {/* 1. Input Project ID, Nama Project, Area & Nama Waspang */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
           {/* Project ID */}
           <div>
             <div className="flex items-center justify-between mb-1.5 h-5">
@@ -446,6 +559,40 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
             </div>
           </div>
 
+          {/* Input Area (Jabo 1, Jabo 2, Jabo 3) */}
+          <div>
+            <div className="flex items-center justify-between mb-1.5 h-5">
+              <label 
+                htmlFor="select-area" 
+                className="flex items-center gap-1.5 text-xs font-mono-cyber text-cyan-300 uppercase tracking-wider font-semibold truncate"
+              >
+                <MapPin className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                <span className="truncate">Area <span className="text-amber-400">*</span></span>
+              </label>
+              {formData.area && (
+                <span className="text-[10px] font-mono-cyber text-indigo-300 bg-indigo-950/80 border border-indigo-500/40 px-1.5 py-0.2 rounded shrink-0 font-bold">
+                  {formData.area}
+                </span>
+              )}
+            </div>
+            
+            <div className="relative flex items-center">
+              <select
+                id="select-area"
+                value={formData.area || 'Jabo 1'}
+                onChange={(e) => handleTopLevelChange('area', e.target.value)}
+                className="w-full h-10 appearance-none bg-[#050b14] border border-cyan-500/40 focus:border-cyan-400 rounded-xl px-3.5 text-xs sm:text-sm text-slate-100 font-mono-cyber font-semibold focus:outline-none focus:ring-1 focus:ring-cyan-400 pr-9 cursor-pointer transition-colors"
+              >
+                {AREA_OPTIONS.map((opt) => (
+                  <option key={opt} value={opt} className="bg-[#050b14] text-white">
+                    {opt}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="w-4 h-4 text-cyan-400 absolute right-3 pointer-events-none" />
+            </div>
+          </div>
+
           {/* Input Nama Waspang */}
           <div>
             <div className="flex items-center justify-between mb-1.5 h-5">
@@ -480,20 +627,21 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
                 key={p.id}
                 type="button"
                 onClick={() => {
-                  const projectTotalDurasi = p.durasiPekerjaan || p.totalDurasi || formData.totalDurasi || '30';
+                  // Durasi paten 90 hari
                   const curDay = parseInt(formData.dayNumber || '1', 10);
-                  const dayOffset = !isNaN(curDay) && curDay >= 1 ? curDay - 1 : 0;
-                  const computedDurasi = Math.max(0, parseFloat(projectTotalDurasi) - dayOffset).toString();
+                  const validDay = !isNaN(curDay) && curDay >= 1 ? curDay : 1;
+                  const computedDurasi = Math.max(0, TOTAL_DURASI_MASTER - validDay).toString();
 
                   onChange({
                     ...formData,
                     projectName: p.name,
                     projectId: p.code || p.id,
+                    area: p.area || formData.area || 'Jabo 1',
                     waspangName: p.pic || formData.waspangName || '',
                     startDate: p.startDate || formData.startDate,
                     endDate: p.endDate || formData.endDate,
                     durasiPekerjaan: computedDurasi,
-                    totalDurasi: projectTotalDurasi,
+                    totalDurasi: TOTAL_DURASI_MASTER.toString(),
                   });
                 }}
                 className={`px-2.5 py-1 rounded-lg text-[11px] font-mono-cyber transition-all border cursor-pointer ${
@@ -508,135 +656,210 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
           </div>
         )}
 
-        {/* 2. Input Daily Perhari: Tanggal Laporan, Hari Ke-, dan Kondisi Cuaca */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
-          {/* Tanggal Laporan */}
-          <div className="flex flex-col">
-            <label 
-              htmlFor="input-report-date" 
-              className="h-5 flex items-center gap-1.5 text-xs font-mono-cyber text-slate-300 uppercase tracking-wider mb-1.5"
-            >
-              <Calendar className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
-              <span className="truncate">Tanggal Laporan</span>
-            </label>
-            <div className="relative flex items-center">
-              <input
-                id="input-report-date"
-                type="date"
-                value={formData.reportDate}
-                onChange={(e) => handleTopLevelChange('reportDate', e.target.value)}
-                className="w-full h-10 bg-[#050b14] border border-slate-700/80 focus:border-cyan-400 rounded-xl px-3 text-xs sm:text-sm text-slate-100 font-mono-cyber focus:outline-none focus:ring-1 focus:ring-cyan-400 transition-colors"
-              />
-            </div>
-          </div>
+        {(() => {
+          const dateDiffInfo = calculateDaysDiff(formData.reportDate, formData.startDate);
+          const isDateBeforeStart = dateDiffInfo ? dateDiffInfo.isNegative : false;
+          const isHariKeSynced = dateDiffInfo ? formData.dayNumber === dateDiffInfo.days.toString() : false;
 
-          {/* Input Hari ke- (Daily Progress Counter) */}
-          <div className="flex flex-col">
-            <label 
-              htmlFor="input-day-number" 
-              className="h-5 flex items-center gap-1.5 text-xs font-mono-cyber text-slate-300 uppercase tracking-wider mb-1.5"
-            >
-              <Clock className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-              <span className="truncate">Hari Ke- (Tracker)</span>
-            </label>
-            <div className="relative flex items-center">
-              <input
-                id="input-day-number"
-                type="number"
-                min="1"
-                value={formData.dayNumber || '1'}
-                onChange={(e) => handleTopLevelChange('dayNumber', e.target.value)}
-                placeholder="1"
-                className="w-full h-10 bg-[#050b14] border border-slate-700/80 focus:border-cyan-400 rounded-xl pl-3 pr-14 text-xs sm:text-sm text-slate-100 font-mono-cyber focus:outline-none focus:ring-1 focus:ring-cyan-400 transition-colors"
-              />
-              <span className="absolute right-3 text-xs font-mono-cyber text-slate-400 pointer-events-none">
-                Hari
-              </span>
-            </div>
-          </div>
+          return (
+            <>
+              {/* 2. Input Daily Perhari: Tanggal Laporan, Hari Ke-, dan Kondisi Cuaca */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+                {/* Tanggal Laporan */}
+                <div className="flex flex-col">
+                  <label 
+                    htmlFor="input-report-date" 
+                    className="h-5 flex items-center gap-1.5 text-xs font-mono-cyber text-slate-300 uppercase tracking-wider mb-1.5"
+                  >
+                    <Calendar className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                    <span className="truncate">Tanggal Laporan</span>
+                  </label>
+                  <div className="relative flex items-center">
+                    <input
+                      id="input-report-date"
+                      type="date"
+                      value={formData.reportDate}
+                      onChange={(e) => handleTopLevelChange('reportDate', e.target.value)}
+                      className="w-full h-10 bg-[#050b14] border border-slate-700/80 focus:border-cyan-400 rounded-xl px-3 text-xs sm:text-sm text-slate-100 font-mono-cyber focus:outline-none focus:ring-1 focus:ring-cyan-400 transition-colors"
+                    />
+                  </div>
+                  <span className="text-[10px] text-slate-500 mt-1 font-mono-cyber leading-tight">
+                    Tanggal pelaksanaan pekerjaan
+                  </span>
+                </div>
 
-          {/* Kondisi Cuaca */}
-          <div className="flex flex-col">
-            <label 
-              htmlFor="select-weather" 
-              className="h-5 flex items-center gap-1.5 text-xs font-mono-cyber text-slate-300 uppercase tracking-wider mb-1.5"
-            >
-              <CloudSun className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-              <span className="truncate">Kondisi Cuaca</span>
-            </label>
-            <div className="relative flex items-center">
-              <select
-                id="select-weather"
-                value={formData.weatherCondition}
-                onChange={(e) => handleTopLevelChange('weatherCondition', e.target.value)}
-                className="w-full h-10 appearance-none bg-[#050b14] border border-slate-700/80 focus:border-cyan-400 rounded-xl px-3 text-xs sm:text-sm text-slate-100 font-mono-cyber focus:outline-none focus:ring-1 focus:ring-cyan-400 pr-9 cursor-pointer transition-colors"
-              >
-                {WEATHER_OPTIONS.map((opt) => (
-                  <option key={opt} value={opt}>
-                    {opt}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3 pointer-events-none" />
-            </div>
-          </div>
-        </div>
+                {/* Input Hari ke- (Daily Progress Counter) */}
+                <div className="flex flex-col">
+                  <div className="h-5 flex items-center justify-between mb-1.5">
+                    <label 
+                      htmlFor="input-day-number" 
+                      className="flex items-center gap-1.5 text-xs font-mono-cyber text-slate-300 uppercase tracking-wider truncate"
+                    >
+                      <Clock className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                      <span className="truncate">Hari Ke- (Tracker)</span>
+                    </label>
+                    {dateDiffInfo && (
+                      isHariKeSynced ? (
+                        <span 
+                          className="text-[10px] font-mono-cyber text-emerald-400 bg-emerald-950/70 border border-emerald-500/30 px-1.5 py-0.5 rounded flex items-center gap-1 shrink-0"
+                          title="Hari Ke- dihitung otomatis dari selisih Tanggal Laporan dan Start Project"
+                        >
+                          <Sparkles className="w-2.5 h-2.5" />
+                          Auto: H+{dateDiffInfo.days}
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={handleSyncHariKeFromDates}
+                          className="text-[10px] font-mono-cyber text-cyan-400 hover:text-cyan-300 bg-cyan-950/70 border border-cyan-500/40 px-1.5 py-0.5 rounded flex items-center gap-1 shrink-0 transition-colors cursor-pointer"
+                          title="Klik untuk sinkronkan kembali sesuai selisih tanggal laporan"
+                        >
+                          <Sparkles className="w-2.5 h-2.5" />
+                          Sinkron H+{dateDiffInfo.days}
+                        </button>
+                      )
+                    )}
+                  </div>
+                  <div className="relative flex items-center">
+                    <input
+                      id="input-day-number"
+                      type="number"
+                      min="1"
+                      value={formData.dayNumber || '1'}
+                      onChange={(e) => handleTopLevelChange('dayNumber', e.target.value)}
+                      placeholder="1"
+                      className="w-full h-10 bg-[#050b14] border border-slate-700/80 focus:border-cyan-400 rounded-xl pl-3 pr-14 text-xs sm:text-sm text-slate-100 font-mono-cyber font-bold focus:outline-none focus:ring-1 focus:ring-cyan-400 transition-colors"
+                    />
+                    <span className="absolute right-3 text-xs font-mono-cyber text-emerald-400/80 pointer-events-none font-semibold">
+                      Hari
+                    </span>
+                  </div>
+                  <span className="text-[10px] text-slate-400 mt-1 font-mono-cyber leading-tight">
+                    {dateDiffInfo
+                      ? `Otomatis: H+${dateDiffInfo.days} (Laporan - Start + 1)`
+                      : `Hari kerja berjalan project`}
+                  </span>
+                </div>
 
-        {/* 3. Tanggal Start Project & Durasi Pekerjaan */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-2 border-t border-slate-800/80">
-          <div className="flex flex-col">
-            <label 
-              htmlFor="input-start-date" 
-              className="h-5 flex items-center gap-1.5 text-xs font-mono-cyber text-slate-300 uppercase tracking-wider mb-1.5"
-            >
-              <Calendar className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
-              <span>Tanggal Start Project</span>
-            </label>
-            <input
-              id="input-start-date"
-              type="date"
-              value={formData.startDate}
-              onChange={(e) => handleTopLevelChange('startDate', e.target.value)}
-              className="w-full h-10 bg-[#050b14] border border-slate-700/80 focus:border-cyan-400 rounded-xl px-3 text-xs sm:text-sm text-slate-100 font-mono-cyber focus:outline-none focus:ring-1 focus:ring-cyan-400 transition-colors"
-            />
-          </div>
+                {/* Kondisi Cuaca */}
+                <div className="flex flex-col">
+                  <label 
+                    htmlFor="select-weather" 
+                    className="h-5 flex items-center gap-1.5 text-xs font-mono-cyber text-slate-300 uppercase tracking-wider mb-1.5"
+                  >
+                    <CloudSun className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                    <span className="truncate">Kondisi Cuaca</span>
+                  </label>
+                  <div className="relative flex items-center">
+                    <select
+                      id="select-weather"
+                      value={formData.weatherCondition}
+                      onChange={(e) => handleTopLevelChange('weatherCondition', e.target.value)}
+                      className="w-full h-10 appearance-none bg-[#050b14] border border-slate-700/80 focus:border-cyan-400 rounded-xl px-3 text-xs sm:text-sm text-slate-100 font-mono-cyber focus:outline-none focus:ring-1 focus:ring-cyan-400 pr-9 cursor-pointer transition-colors"
+                    >
+                      {WEATHER_OPTIONS.map((opt) => (
+                        <option key={opt} value={opt}>
+                          {opt}
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3 pointer-events-none" />
+                  </div>
+                  <span className="text-[10px] text-slate-500 mt-1 font-mono-cyber leading-tight">
+                    Kondisi lapangan hari ini
+                  </span>
+                </div>
 
-          <div className="flex flex-col">
-            <div className="h-5 flex items-center justify-between mb-1.5">
-              <label 
-                htmlFor="input-durasi-pekerjaan" 
-                className="flex items-center gap-1.5 text-xs font-mono-cyber text-slate-300 uppercase tracking-wider"
-              >
-                <Clock className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                <span>Durasi Pekerjaan (Hari)</span>
-              </label>
-              {formData.totalDurasi && Number(formData.totalDurasi) > 0 && (
-                <span className="text-[10px] font-mono-cyber text-emerald-400/90 bg-emerald-950/70 px-1.5 py-0.2 rounded border border-emerald-500/30">
-                  Total: {formData.totalDurasi} Hari
-                </span>
-              )}
-            </div>
-            <div className="relative flex items-center">
-              <input
-                id="input-durasi-pekerjaan"
-                type="number"
-                min="0"
-                value={formData.durasiPekerjaan ?? ''}
-                onChange={(e) => handleTopLevelChange('durasiPekerjaan', e.target.value)}
-                placeholder={formData.totalDurasi || '30'}
-                className="w-full h-10 bg-[#050b14] border border-slate-700/80 focus:border-cyan-400 rounded-xl pl-3 pr-16 text-xs sm:text-sm text-slate-100 font-mono-cyber font-bold focus:outline-none focus:ring-1 focus:ring-cyan-400 transition-colors"
-              />
-              <span className="absolute right-2.5 px-2 py-0.5 text-xs font-mono-cyber font-semibold text-emerald-300 bg-emerald-950/90 border border-emerald-500/40 rounded pointer-events-none">
-                Hari
-              </span>
-            </div>
-            <span className="text-[10px] text-slate-400 mt-1 font-mono-cyber leading-tight">
-              {formData.totalDurasi && Number(formData.totalDurasi) > 0
-                ? `Tersisa ${formData.durasiPekerjaan || 0} hari kerja (otomatis berkurang sesuai Hari Ke- tracker)`
-                : `Durasi pekerjaan otomatis berkurang seiring perubahan Hari Ke- (Tracker)`}
-            </span>
-          </div>
-        </div>
+                {/* Peringatan jika tanggal laporan sebelum tanggal start */}
+                {isDateBeforeStart && (
+                  <div className="col-span-1 sm:col-span-3 flex items-center gap-2.5 p-3 rounded-xl bg-amber-950/40 border border-amber-500/40 text-amber-300 text-xs font-mono-cyber">
+                    <AlertCircle className="w-4 h-4 text-amber-400 shrink-0" />
+                    <div>
+                      <strong>Peringatan Tanggal:</strong> Tanggal Laporan ({formData.reportDate}) lebih awal dari Tanggal Start Project ({formData.startDate}). Hari Ke- otomatis diset minimal 1.
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* 3. Tanggal Start Project & Durasi Pekerjaan */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-2 border-t border-slate-800/80">
+                <div className="flex flex-col">
+                  <label 
+                    htmlFor="input-start-date" 
+                    className="h-5 flex items-center gap-1.5 text-xs font-mono-cyber text-slate-300 uppercase tracking-wider mb-1.5"
+                  >
+                    <Calendar className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                    <span>Tanggal Start Project</span>
+                  </label>
+                  <input
+                    id="input-start-date"
+                    type="date"
+                    value={formData.startDate}
+                    onChange={(e) => handleTopLevelChange('startDate', e.target.value)}
+                    className="w-full h-10 bg-[#050b14] border border-slate-700/80 focus:border-cyan-400 rounded-xl px-3 text-xs sm:text-sm text-slate-100 font-mono-cyber focus:outline-none focus:ring-1 focus:ring-cyan-400 transition-colors"
+                  />
+                  <span className="text-[10px] text-slate-500 mt-1 font-mono-cyber leading-tight">
+                    Titik awal perhitungan Hari Ke-
+                  </span>
+                </div>
+
+                <div className="flex flex-col">
+                  <div className="h-5 flex items-center justify-between mb-1.5">
+                    <label 
+                      htmlFor="input-durasi-pekerjaan" 
+                      className="flex items-center gap-1.5 text-xs font-mono-cyber text-slate-300 uppercase tracking-wider"
+                    >
+                      <Clock className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                      <span>Durasi Pekerjaan (Hari)</span>
+                    </label>
+                    <span className={`text-[10px] font-mono-cyber px-1.5 py-0.5 rounded border flex items-center gap-1 ${
+                      isOverdue 
+                        ? 'text-red-400 bg-red-950/70 border-red-500/40' 
+                        : 'text-emerald-400/90 bg-emerald-950/70 border-emerald-500/30'
+                    }`}>
+                      <Lock className="w-2.5 h-2.5" />
+                      <span>Otomatis (Acuan: {TOTAL_DURASI_MASTER} Hari)</span>
+                    </span>
+                  </div>
+                  <div className="relative flex items-center">
+                    <Lock className={`w-3.5 h-3.5 absolute left-3 pointer-events-none ${isOverdue ? 'text-red-400' : 'text-slate-500'}`} />
+                    <input
+                      id="input-durasi-pekerjaan"
+                      type="number"
+                      readOnly
+                      disabled
+                      tabIndex={-1}
+                      value={formData.durasiPekerjaan ?? ''}
+                      placeholder={TOTAL_DURASI_MASTER.toString()}
+                      title={`Kalkulasi Otomatis: ${TOTAL_DURASI_MASTER} (Total Master) - ${hariKe} (Hari Ke-)`}
+                      className={`w-full h-10 bg-[#070e1b] border rounded-xl pl-8 pr-16 text-xs sm:text-sm font-mono-cyber font-bold cursor-not-allowed select-none focus:outline-none transition-colors ${
+                        isOverdue
+                          ? 'border-red-500 text-red-400'
+                          : 'border-slate-700/80 text-emerald-300'
+                      }`}
+                    />
+                    <span className={`absolute right-2.5 px-2 py-0.5 text-xs font-mono-cyber font-semibold rounded pointer-events-none border ${
+                      isOverdue
+                        ? 'text-red-300 bg-red-950/90 border-red-500/40'
+                        : 'text-emerald-300 bg-emerald-950/90 border-emerald-500/40'
+                    }`}>
+                      Hari
+                    </span>
+                  </div>
+                  <span className="text-[10px] text-slate-400 mt-1 font-mono-cyber leading-tight">
+                    Sisa Durasi = {TOTAL_DURASI_MASTER} (Total Master) - {hariKe} (Hari Ke-) = <strong className={isOverdue ? 'text-red-400' : 'text-emerald-300'}>{formData.durasiPekerjaan || 0} Hari</strong> {Number(formData.durasiPekerjaan) <= 0 ? '(0 Hari tersisa)' : 'tersisa'}
+                  </span>
+                  {/* Notifikasi Peringatan Keterlambatan jika isOverdue bernilai true */}
+                  {isOverdue && (
+                    <p className="text-red-500 font-bold text-sm mt-1 flex items-center gap-1.5">
+                      <span>⚠️ Peringatan: Pelaksanaan pekerjaan telah melewati batas waktu 90 hari!</span>
+                    </p>
+                  )}
+                </div>
+              </div>
+            </>
+          );
+        })()}
 
         {/* 4. Total Progress Sipil & Total Progress Kabel */}
         <div className="pt-2 border-t border-slate-800/80">
@@ -661,7 +884,7 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
             </button>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
             {/* Total Progress Sipil Card */}
             <div className="p-3 rounded-xl bg-[#060c18] border border-cyan-500/30 flex flex-col justify-between">
               <div className="flex items-center justify-between mb-1.5">
@@ -699,7 +922,7 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
               </div>
             </div>
 
-            {/* Total Progress Kabel Card */}
+            {/* Total Progress Kabel FO Card */}
             <div className="p-3 rounded-xl bg-[#060c18] border border-emerald-500/30 flex flex-col justify-between">
               <div className="flex items-center justify-between mb-1.5">
                 <label 
@@ -731,6 +954,43 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
               <div className="flex items-center justify-between mt-1 text-[10px] font-mono-cyber text-slate-400">
                 <span>Akumulasi Pulling: {totalPullingMeters} m</span>
                 {totalPullingMeters > 0 && (
+                  <span className="text-emerald-400 font-semibold">Tersinkronisasi</span>
+                )}
+              </div>
+            </div>
+
+            {/* Total Progress Kabel Coax Card */}
+            <div className="p-3 rounded-xl bg-[#060c18] border border-blue-500/30 flex flex-col justify-between">
+              <div className="flex items-center justify-between mb-1.5">
+                <label 
+                  htmlFor="input-total-kabel-coax" 
+                  className="flex items-center gap-1.5 text-xs font-mono-cyber text-blue-300 uppercase tracking-wider font-semibold"
+                >
+                  <span className="w-2 h-2 rounded-full bg-blue-400 shrink-0" />
+                  <span>Total Progress Kabel Coax</span>
+                </label>
+                <span className="text-[10px] font-mono-cyber text-blue-400/80 bg-blue-950/60 px-1.5 py-0.5 rounded border border-blue-500/20">
+                  Akumulasi Coax
+                </span>
+              </div>
+              <div className="relative flex items-center h-10">
+                <input
+                  id="input-total-kabel-coax"
+                  type="number"
+                  step="any"
+                  min="0"
+                  value={formData.totalProgressKabelCoax ?? ''}
+                  onChange={(e) => handleTopLevelChange('totalProgressKabelCoax', e.target.value)}
+                  placeholder={totalPullingCoaxMeters > 0 ? totalPullingCoaxMeters.toString() : '0'}
+                  className="w-full h-10 bg-[#091224] border border-blue-500/40 focus:border-blue-400 rounded-lg pl-3 pr-16 text-sm sm:text-base font-bold font-mono-cyber text-white focus:outline-none focus:ring-1 focus:ring-blue-400 transition-colors"
+                />
+                <span className="absolute right-2.5 px-2 py-0.5 text-[11px] font-mono-cyber font-semibold text-blue-300 bg-blue-950/90 border border-blue-500/40 rounded pointer-events-none">
+                  Meter
+                </span>
+              </div>
+              <div className="flex items-center justify-between mt-1 text-[10px] font-mono-cyber text-slate-400">
+                <span>Akumulasi Coax: {totalPullingCoaxMeters} m</span>
+                {totalPullingCoaxMeters > 0 && (
                   <span className="text-emerald-400 font-semibold">Tersinkronisasi</span>
                 )}
               </div>
@@ -997,8 +1257,8 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
         <AccordionSection
           id="accordion-pulling"
           title="II. Penarikan Kabel / Pulling (Meter)"
-          subtitle="Pulling Kabel 288, 288 GL, 144, 96, 96 GL, 48, 24"
-          badge={`${totalPullingMeters} m`}
+          subtitle="Pulling Kabel 288, 288 GL, 144, 96, 96 GL, 48, 24 & Kabel Coax"
+          badge={`${totalPullingMeters + totalPullingCoaxMeters} m`}
           isOpen={openAccordions.pulling}
           onToggle={() => toggleAccordion('pulling')}
           accentColor="emerald"
@@ -1173,14 +1433,40 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
               </div>
             </div>
 
-            {/* Symmetrical 8th slot balancing the 2-column grid */}
+            {/* 8th slot: Pulling Kabel Coax */}
             <div className="flex flex-col">
-              <div className="h-5 flex items-center text-xs font-mono-cyber text-emerald-400 mb-1.5 font-semibold">
-                <span>Total Tarikan Kabel</span>
+              <label 
+                htmlFor="input-pulling-coax" 
+                className="h-5 flex items-center text-xs font-mono-cyber text-blue-300 mb-1.5 truncate font-semibold"
+              >
+                Pulling Kabel Coax
+              </label>
+              <div className="relative flex items-center h-10">
+                <input
+                  id="input-pulling-coax"
+                  type="number"
+                  step="any"
+                  min="0"
+                  value={formData.pulling?.pullingCoax ?? ''}
+                  onChange={(e) => handleNestedChange('pulling', 'pullingCoax', e.target.value)}
+                  placeholder="0"
+                  className="w-full h-10 bg-[#050b14] border border-slate-700/80 focus:border-blue-400 rounded-xl pl-3 pr-10 text-xs sm:text-sm font-mono-cyber text-white focus:outline-none focus:ring-1 focus:ring-blue-400 transition-colors"
+                />
+                <span className="absolute right-3 text-xs font-mono-cyber text-blue-400 pointer-events-none font-semibold">
+                  m
+                </span>
               </div>
+            </div>
+
+            {/* Pulling summary footer bar */}
+            <div className="col-span-1 sm:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
               <div className="h-10 flex items-center justify-between px-3.5 bg-[#060c18] border border-emerald-500/40 rounded-xl">
-                <span className="text-xs font-mono-cyber text-slate-400">Akumulasi:</span>
+                <span className="text-xs font-mono-cyber text-slate-400">Total Tarikan FO:</span>
                 <span className="text-xs sm:text-sm font-bold font-mono-cyber text-emerald-300">{totalPullingMeters} m</span>
+              </div>
+              <div className="h-10 flex items-center justify-between px-3.5 bg-[#060c18] border border-blue-500/40 rounded-xl">
+                <span className="text-xs font-mono-cyber text-slate-400">Total Tarikan Coax:</span>
+                <span className="text-xs sm:text-sm font-bold font-mono-cyber text-blue-300">{totalPullingCoaxMeters} m</span>
               </div>
             </div>
           </div>

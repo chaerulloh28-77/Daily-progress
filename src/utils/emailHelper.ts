@@ -185,6 +185,7 @@ export const formatReportRecapForEmail = (report: DailyReportFormData): string =
     `📊 REKAP PROGRES UTAMA:`,
     `• Total Progres Sipil : ${report.totalProgressSipil || 0} Meter`,
     `• Total Progres Kabel : ${report.totalProgressKabel || 0} Meter`,
+    `• Total Progres Coax  : ${report.totalProgressKabelCoax || report.pulling?.pullingCoax || 0} Meter`,
     `• Total Handhole (HH) : ${displayHH} Pcs`,
     `• Total Handbox (HB)  : ${displayHB} Pcs`,
     `• Total Manhole (MH)  : ${displayMH} Pcs`,
@@ -264,6 +265,9 @@ export const sendReportEditNotification = async (
     }
     if (previousReport.totalProgressKabel !== updatedReport.totalProgressKabel) {
       changes.push(`- Progres Kabel: ${previousReport.totalProgressKabel}m -> ${updatedReport.totalProgressKabel}m`);
+    }
+    if (previousReport.totalProgressKabelCoax !== updatedReport.totalProgressKabelCoax) {
+      changes.push(`- Progres Kabel Coax: ${previousReport.totalProgressKabelCoax || 0}m -> ${updatedReport.totalProgressKabelCoax || 0}m`);
     }
     if (previousReport.totalProgressHH !== updatedReport.totalProgressHH) {
       changes.push(`- Total HH: ${previousReport.totalProgressHH || 0} -> ${updatedReport.totalProgressHH || 0} Pcs`);

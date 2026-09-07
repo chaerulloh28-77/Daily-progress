@@ -1,14 +1,18 @@
+export type AreaOption = 'Jabo 1' | 'Jabo 2' | 'Jabo 3';
+
 export interface ProjectItem {
   id: string;
   name: string;
   code?: string;
   location?: string;
+  area?: string;
   startDate?: string;
   endDate?: string;
   durasiPekerjaan?: string;
   totalDurasi?: string;
   targetSipil?: string;
   targetKabel?: string;
+  targetKabelCoax?: string;
   targetHH?: string;
   targetHB?: string;
   targetMH?: string;
@@ -34,6 +38,7 @@ export interface PullingProgress {
   pulling96GL: string;
   pulling48: string;
   pulling24: string;
+  pullingCoax?: string;
 }
 
 export interface HHProgress {
@@ -86,6 +91,7 @@ export interface DailyReportFormData {
   id?: string;
   projectName: string;
   projectId?: string;
+  area?: string;
   waspangName?: string;
   dayNumber?: string;
   reportDate: string;
@@ -96,11 +102,13 @@ export interface DailyReportFormData {
   totalDurasi?: string;
   totalProgressSipil: string;
   totalProgressKabel: string;
+  totalProgressKabelCoax?: string;
   totalProgressHH?: string;
   totalProgressHB?: string;
   totalProgressMH?: string;
   baseTargetSipil?: string;
   baseTargetKabel?: string;
+  baseTargetKabelCoax?: string;
   baseTargetHH?: string;
   baseTargetHB?: string;
   baseTargetMH?: string;

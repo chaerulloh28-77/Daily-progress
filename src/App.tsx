@@ -143,11 +143,12 @@ export default function App() {
     // Automatically fill into form
     const projectTotalDurasi = newProject.durasiPekerjaan || newProject.totalDurasi || '30';
     const curDay = parseInt(formData.dayNumber || '1', 10);
-    const dayOffset = !isNaN(curDay) && curDay >= 1 ? curDay - 1 : 0;
-    const computedDurasi = Math.max(0, parseFloat(projectTotalDurasi) - dayOffset).toString();
+    const dayCount = !isNaN(curDay) && curDay >= 1 ? curDay : 1;
+    const computedDurasi = Math.max(0, parseFloat(projectTotalDurasi) - dayCount).toString();
 
     const baseSipil = newProject.targetSipil || '1000';
     const baseKabel = newProject.targetKabel || '2000';
+    const baseCoax = newProject.targetKabelCoax || '0';
     const baseHH = newProject.targetHH || '10';
     const baseHB = newProject.targetHB || '10';
     const baseMH = newProject.targetMH || '5';
@@ -156,6 +157,7 @@ export default function App() {
       ...prev,
       projectName: newProject.name,
       projectId: newProject.code || newProject.id,
+      area: newProject.area || prev.area || 'Jabo 1',
       waspangName: newProject.pic || prev.waspangName || '',
       startDate: newProject.startDate || prev.startDate,
       endDate: newProject.endDate || prev.endDate,
@@ -163,11 +165,13 @@ export default function App() {
       totalDurasi: projectTotalDurasi,
       baseTargetSipil: baseSipil,
       baseTargetKabel: baseKabel,
+      baseTargetKabelCoax: baseCoax,
       baseTargetHH: baseHH,
       baseTargetHB: baseHB,
       baseTargetMH: baseMH,
       totalProgressSipil: baseSipil,
       totalProgressKabel: baseKabel,
+      totalProgressKabelCoax: baseCoax,
       totalProgressHH: baseHH,
       totalProgressHB: baseHB,
       totalProgressMH: baseMH,
@@ -182,12 +186,13 @@ export default function App() {
     if (formData.projectId === updated.id) {
       const projectTotalDurasi = updated.durasiPekerjaan || updated.totalDurasi || formData.totalDurasi || '30';
       const curDay = parseInt(formData.dayNumber || '1', 10);
-      const dayOffset = !isNaN(curDay) && curDay >= 1 ? curDay - 1 : 0;
-      const computedDurasi = Math.max(0, parseFloat(projectTotalDurasi) - dayOffset).toString();
+      const dayCount = !isNaN(curDay) && curDay >= 1 ? curDay : 1;
+      const computedDurasi = Math.max(0, parseFloat(projectTotalDurasi) - dayCount).toString();
 
       setFormData((prev) => ({
         ...prev,
         projectName: updated.name,
+        area: updated.area || prev.area || 'Jabo 1',
         waspangName: updated.pic || prev.waspangName || '',
         startDate: updated.startDate || prev.startDate,
         endDate: updated.endDate || prev.endDate,
@@ -207,11 +212,12 @@ export default function App() {
   const handleSelectProject = (project: ProjectItem) => {
     const projectTotalDurasi = project.durasiPekerjaan || project.totalDurasi || formData.totalDurasi || '30';
     const curDay = parseInt(formData.dayNumber || '1', 10);
-    const dayOffset = !isNaN(curDay) && curDay >= 1 ? curDay - 1 : 0;
-    const computedDurasi = Math.max(0, parseFloat(projectTotalDurasi) - dayOffset).toString();
+    const dayCount = !isNaN(curDay) && curDay >= 1 ? curDay : 1;
+    const computedDurasi = Math.max(0, parseFloat(projectTotalDurasi) - dayCount).toString();
 
     const baseSipil = project.targetSipil || formData.baseTargetSipil || '1000';
     const baseKabel = project.targetKabel || formData.baseTargetKabel || '2000';
+    const baseCoax = project.targetKabelCoax || formData.baseTargetKabelCoax || '0';
     const baseHH = project.targetHH || formData.baseTargetHH || '10';
     const baseHB = project.targetHB || formData.baseTargetHB || '10';
     const baseMH = project.targetMH || formData.baseTargetMH || '5';
@@ -230,6 +236,8 @@ export default function App() {
       (parseFloat(formData.pulling.pulling96GL) || 0) +
       (parseFloat(formData.pulling.pulling48) || 0) +
       (parseFloat(formData.pulling.pulling24) || 0);
+
+    const curPullingCoax = parseFloat(formData.pulling?.pullingCoax || '0') || 0;
 
     const curHH = 
       (parseFloat(formData.instalasiHH.hh60x60) || 0) +
@@ -252,6 +260,7 @@ export default function App() {
       ...prev,
       projectName: project.name,
       projectId: project.code || project.id,
+      area: project.area || prev.area || 'Jabo 1',
       waspangName: project.pic || prev.waspangName || '',
       startDate: project.startDate || prev.startDate,
       endDate: project.endDate || prev.endDate,
@@ -259,11 +268,13 @@ export default function App() {
       totalDurasi: projectTotalDurasi,
       baseTargetSipil: baseSipil,
       baseTargetKabel: baseKabel,
+      baseTargetKabelCoax: baseCoax,
       baseTargetHH: baseHH,
       baseTargetHB: baseHB,
       baseTargetMH: baseMH,
       totalProgressSipil: Math.max(0, (parseFloat(baseSipil) || 0) - curBoring).toString(),
       totalProgressKabel: Math.max(0, (parseFloat(baseKabel) || 0) - curPulling).toString(),
+      totalProgressKabelCoax: baseCoax !== '0' ? Math.max(0, (parseFloat(baseCoax) || 0) - curPullingCoax).toString() : (prev.totalProgressKabelCoax || curPullingCoax.toString()),
       totalProgressHH: Math.max(0, (parseFloat(baseHH) || 0) - curHH).toString(),
       totalProgressHB: Math.max(0, (parseFloat(baseHB) || 0) - curHB).toString(),
       totalProgressMH: Math.max(0, (parseFloat(baseMH) || 0) - curMH).toString(),
@@ -410,15 +421,16 @@ export default function App() {
 
     if (mode === 'new_day') {
       const nextDay = getNextDayNumber(formData.projectName);
-      const totalBase = parseFloat(formData.totalDurasi || formData.durasiPekerjaan || '30');
+      const totalBase = parseFloat(formData.totalDurasi || '30');
       const nextDayNum = parseInt(nextDay, 10);
-      const dayOffset = !isNaN(nextDayNum) && nextDayNum >= 1 ? nextDayNum - 1 : 0;
-      const nextDurasi = Math.max(0, totalBase - dayOffset).toString();
+      const dayNum = !isNaN(nextDayNum) && nextDayNum >= 1 ? nextDayNum : 1;
+      const nextDurasi = Math.max(0, totalBase - dayNum).toString();
 
       // Find matching project from list for base targets if available
       const matchedProject = projects.find((p) => p.name === formData.projectName);
       const baseSipil = matchedProject?.targetSipil || formData.baseTargetSipil || '1000';
       const baseKabel = matchedProject?.targetKabel || formData.baseTargetKabel || '2000';
+      const baseCoax = matchedProject?.targetKabelCoax || formData.baseTargetKabelCoax || '0';
       const baseHH = matchedProject?.targetHH || formData.baseTargetHH || '10';
       const baseHB = matchedProject?.targetHB || formData.baseTargetHB || '10';
       const baseMH = matchedProject?.targetMH || formData.baseTargetMH || '5';
@@ -429,6 +441,7 @@ export default function App() {
         dayNumber: nextDay,
         projectName: formData.projectName,
         projectId: formData.projectId || matchedProject?.id || '',
+        area: formData.area || matchedProject?.area || 'Jabo 1',
         waspangName: formData.waspangName || matchedProject?.pic || '',
         startDate: matchedProject?.startDate || formData.startDate,
         endDate: matchedProject?.endDate || formData.endDate,
@@ -436,11 +449,13 @@ export default function App() {
         totalDurasi: totalBase.toString(),
         baseTargetSipil: baseSipil,
         baseTargetKabel: baseKabel,
+        baseTargetKabelCoax: baseCoax,
         baseTargetHH: baseHH,
         baseTargetHB: baseHB,
         baseTargetMH: baseMH,
         totalProgressSipil: baseSipil,
         totalProgressKabel: baseKabel,
+        totalProgressKabelCoax: baseCoax,
         totalProgressHH: baseHH,
         totalProgressHB: baseHB,
         totalProgressMH: baseMH,

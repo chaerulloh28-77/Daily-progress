@@ -44,6 +44,7 @@ export const ProjectManagementModal: React.FC<ProjectManagementModalProps> = ({
   const [name, setName] = useState('');
   const [code, setCode] = useState('');
   const [location, setLocation] = useState('');
+  const [area, setArea] = useState<string>('Jabo 1');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [durasiPekerjaan, setDurasiPekerjaan] = useState('30');
@@ -61,6 +62,7 @@ export const ProjectManagementModal: React.FC<ProjectManagementModalProps> = ({
     setName('');
     setCode('');
     setLocation('');
+    setArea('Jabo 1');
     setStartDate('');
     setEndDate('');
     setDurasiPekerjaan('30');
@@ -81,6 +83,7 @@ export const ProjectManagementModal: React.FC<ProjectManagementModalProps> = ({
     setName(proj.name || '');
     setCode(proj.code || '');
     setLocation(proj.location || '');
+    setArea(proj.area || 'Jabo 1');
     setStartDate(proj.startDate || '');
     setEndDate(proj.endDate || '');
     setDurasiPekerjaan(proj.durasiPekerjaan || '30');
@@ -106,6 +109,7 @@ export const ProjectManagementModal: React.FC<ProjectManagementModalProps> = ({
         name: name.trim(),
         code: code.trim() || undefined,
         location: location.trim() || undefined,
+        area: area || 'Jabo 1',
         startDate: startDate || undefined,
         endDate: endDate || undefined,
         durasiPekerjaan: durasiPekerjaan || '30',
@@ -122,6 +126,7 @@ export const ProjectManagementModal: React.FC<ProjectManagementModalProps> = ({
         name: name.trim(),
         code: code.trim() || `PRJ-${Math.floor(100 + Math.random() * 900)}`,
         location: location.trim() || undefined,
+        area: area || 'Jabo 1',
         startDate: startDate || undefined,
         endDate: endDate || undefined,
         durasiPekerjaan: durasiPekerjaan || '30',
@@ -232,10 +237,11 @@ export const ProjectManagementModal: React.FC<ProjectManagementModalProps> = ({
               </div>
 
               {/* Input Kode & Lokasi */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {/* Input Kode, Area & Lokasi */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                   <label className="block text-xs font-mono-cyber text-slate-300 mb-1">
-                    Kode / ID Project (Opsional)
+                    Kode / ID (Opsional)
                   </label>
                   <input
                     type="text"
@@ -244,6 +250,20 @@ export const ProjectManagementModal: React.FC<ProjectManagementModalProps> = ({
                     placeholder="Misal: PRJ-FIBER-01"
                     className="w-full bg-[#091224] border border-slate-700 focus:border-cyan-400 rounded-lg px-3 py-2 text-xs font-mono-cyber text-white focus:outline-none"
                   />
+                </div>
+                <div>
+                  <label className="block text-xs font-mono-cyber text-slate-300 mb-1">
+                    Area <span className="text-amber-400">*</span>
+                  </label>
+                  <select
+                    value={area}
+                    onChange={(e) => setArea(e.target.value)}
+                    className="w-full bg-[#091224] border border-slate-700 focus:border-cyan-400 rounded-lg px-3 py-2 text-xs font-mono-cyber text-white focus:outline-none cursor-pointer"
+                  >
+                    <option value="Jabo 1">Jabo 1</option>
+                    <option value="Jabo 2">Jabo 2</option>
+                    <option value="Jabo 3">Jabo 3</option>
+                  </select>
                 </div>
                 <div>
                   <label className="block text-xs font-mono-cyber text-slate-300 mb-1">
@@ -386,6 +406,11 @@ export const ProjectManagementModal: React.FC<ProjectManagementModalProps> = ({
                         {proj.code && (
                           <span className="text-[10px] font-mono-cyber font-bold px-1.5 py-0.5 rounded bg-cyan-950/80 border border-cyan-500/40 text-cyan-300">
                             {proj.code}
+                          </span>
+                        )}
+                        {proj.area && (
+                          <span className="text-[10px] font-mono-cyber font-bold px-1.5 py-0.5 rounded bg-indigo-950/80 border border-indigo-500/40 text-indigo-300">
+                            {proj.area}
                           </span>
                         )}
                         <h4 className="text-xs sm:text-sm font-bold text-white font-cyber">

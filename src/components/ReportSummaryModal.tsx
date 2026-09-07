@@ -116,6 +116,15 @@ export const ReportSummaryModal: React.FC<ReportSummaryModalProps> = ({
               </span>
             </div>
 
+            {report.area && (
+              <div className="flex items-center justify-between text-slate-300 text-[11px] pt-1 border-t border-slate-800/60">
+                <span className="text-slate-400 font-mono-cyber">Area:</span>
+                <span className="font-mono-cyber font-bold text-indigo-300 bg-indigo-950/70 border border-indigo-500/30 px-1.5 py-0.5 rounded">
+                  {report.area}
+                </span>
+              </div>
+            )}
+
             {report.waspangName && (
               <div className="flex items-center justify-between text-slate-300 text-[11px] pt-1 border-t border-slate-800/60">
                 <span className="text-slate-400 font-mono-cyber">Waspang (Pengawas):</span>
@@ -169,7 +178,7 @@ export const ReportSummaryModal: React.FC<ReportSummaryModalProps> = ({
 
           {/* Quick Metrics */}
           <div className="space-y-2">
-            <div className="grid grid-cols-2 gap-2.5">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
               <div className="bg-cyan-950/30 border border-cyan-500/30 p-3 rounded-xl">
                 <span className="text-[10px] uppercase font-mono-cyber text-cyan-300 block mb-1">
                   Total Sipil Hari Ini
@@ -184,6 +193,14 @@ export const ReportSummaryModal: React.FC<ReportSummaryModalProps> = ({
                 </span>
                 <div className="text-lg font-bold font-mono-cyber text-white">
                   {report.totalProgressKabel || '0'} <span className="text-xs font-normal text-emerald-400">m</span>
+                </div>
+              </div>
+              <div className="bg-blue-950/30 border border-blue-500/30 p-3 rounded-xl">
+                <span className="text-[10px] uppercase font-mono-cyber text-blue-300 block mb-1">
+                  Total Kabel Coax
+                </span>
+                <div className="text-lg font-bold font-mono-cyber text-white">
+                  {report.totalProgressKabelCoax || report.pulling?.pullingCoax || '0'} <span className="text-xs font-normal text-blue-400">m</span>
                 </div>
               </div>
             </div>
@@ -230,8 +247,12 @@ export const ReportSummaryModal: React.FC<ReportSummaryModalProps> = ({
                 <span className="text-cyan-300 font-semibold">{totalBoring} meter</span>
               </div>
               <div className="flex justify-between py-1 border-b border-slate-800/60">
-                <span className="text-slate-400">II. Penarikan Kabel:</span>
+                <span className="text-slate-400">II. Penarikan Kabel FO:</span>
                 <span className="text-emerald-300 font-semibold">{totalPulling} meter</span>
+              </div>
+              <div className="flex justify-between py-1 border-b border-slate-800/60">
+                <span className="text-slate-400">   • Kabel Coaxial:</span>
+                <span className="text-blue-300 font-semibold">{report.pulling?.pullingCoax || report.totalProgressKabelCoax || 0} meter</span>
               </div>
               <div className="flex justify-between py-1 border-b border-slate-800/60">
                 <span className="text-slate-400">III. Total Pit (HH,HB,MH,MB):</span>

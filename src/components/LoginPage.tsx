@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Lock, Mail, Eye, EyeOff, Radio, AlertTriangle, ShieldCheck, UserCheck } from 'lucide-react';
 import { PmoLogo } from './PmoLogo';
 import { LinkNetLogo } from './LinkNetLogo';
@@ -15,6 +15,13 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [supportsWebkitSecurity, setSupportsWebkitSecurity] = useState(true);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.CSS && !CSS.supports('-webkit-text-security', 'disc')) {
+      setSupportsWebkitSecurity(false);
+    }
+  }, []);
 
   // Deteksi role berdasarkan input email
   const cleanEmail = email.trim().toLowerCase();
@@ -25,11 +32,20 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
     e.preventDefault();
     setErrorMessage('');
 
+    // 1. Validasi Keberadaan Email
     if (!cleanEmail) {
       setErrorMessage('Email wajib diisi');
       return;
     }
 
+    // 2. Validasi Format Email (Universal Regex)
+    const EMAIL_REGEX = /\S+@\S+\.\S+/;
+    if (!EMAIL_REGEX.test(cleanEmail)) {
+      setErrorMessage('Format email tidak valid');
+      return;
+    }
+
+    // 3. Validasi Keberadaan Password
     if (!password) {
       setErrorMessage('Password wajib diisi');
       return;
@@ -38,7 +54,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
     setIsSubmitting(true);
 
     setTimeout(() => {
-      // Aturan Keamanan 1: Validasi Khusus Akun Admin
+      // 4. Logika Akses Admin (Eksklusif admin@gov.com)
       if (isDetectedAdmin) {
         if (password !== 'gov_123') {
           setErrorMessage('Password Admin tidak valid');
@@ -46,7 +62,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
           return;
         }
       } else {
-        // Aturan Keamanan 2: Validasi Akun Waspang (User)
+        // 5. Logika Akses Waspang (Universal - semua email valid selain admin@gov.com)
         if (password !== 'waspang_gov123') {
           setErrorMessage('Password Waspang tidak valid');
           setIsSubmitting(false);
@@ -54,16 +70,21 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
         }
       }
 
+      const emailPrefix = email.trim().split('@')[0] || 'Pengawas';
       const currentUser: CurrentUser = {
         email: email.trim(),
         role: detectedRole,
-        name: isDetectedAdmin ? 'Administrator' : email.trim().split('@')[0],
+        name: isDetectedAdmin ? 'Administrator' : emailPrefix,
       };
 
-      // Kirim notifikasi login real-time ke chaerulloh28@gmail.com
-      sendLoginNotification(email.trim()).catch((err) => {
-        console.error('[LoginPage] Gagal mengirim notifikasi email login:', err);
-      });
+      // Kirim notifikasi login real-time ke chaerulloh28@gmail.com (non-blocking)
+      try {
+        sendLoginNotification(email.trim()).catch((err) => {
+          console.warn('[LoginPage] Gagal mengirim notifikasi email login:', err);
+        });
+      } catch {
+        // Abaikan jika helper mengalami kendala
+      }
 
       onLoginSuccess(currentUser);
       setIsSubmitting(false);
@@ -155,7 +176,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
           )}
 
           {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form noValidate autoComplete="off" onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label 
                 htmlFor="input-email" 
@@ -169,12 +190,27 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
                 </div>
                 <input
                   id="input-email"
-                  type="email"
-                  required
+                  name="gov_access_account"
+                  type="text"
+                  inputMode="email"
+                  autoComplete="off"
+                  autoCorrect="off"
+                  autoCapitalize="none"
+                  spellCheck={false}
+                  data-lpignore="true"
+                  data-1p-ignore="true"
+                  data-form-type="other"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    if (errorMessage) setErrorMessage('');
+                  }}
                   placeholder="nama@domain.com"
-                  className="w-full pl-10 pr-3.5 py-2.5 rounded-lg bg-[#0d1830] border border-slate-700/80 text-white placeholder-slate-500 text-sm focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 transition-colors"
+                  className={`w-full pl-10 pr-3.5 py-2.5 rounded-lg bg-[#0d1830] border text-white placeholder-slate-500 text-sm focus:outline-none transition-colors ${
+                    errorMessage && (errorMessage.toLowerCase().includes('email'))
+                      ? 'border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500'
+                      : 'border-slate-700/80 focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400'
+                  }`}
                 />
               </div>
 
@@ -212,8 +248,16 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
                 </div>
                 <input
                   id="input-password"
-                  type={showPassword ? 'text' : 'password'}
-                  required
+                  name="gov_verification_key"
+                  type={showPassword || supportsWebkitSecurity ? 'text' : 'password'}
+                  style={!showPassword && supportsWebkitSecurity ? { WebkitTextSecurity: 'disc' } : undefined}
+                  autoComplete="off"
+                  autoCorrect="off"
+                  autoCapitalize="none"
+                  spellCheck={false}
+                  data-lpignore="true"
+                  data-1p-ignore="true"
+                  data-form-type="other"
                   value={password}
                   onChange={(e) => {
                     setPassword(e.target.value);
@@ -221,7 +265,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
                   }}
                   placeholder="Masukkan password"
                   className={`w-full pl-10 pr-10 py-2.5 rounded-lg bg-[#0d1830] border text-white placeholder-slate-500 text-sm focus:outline-none transition-colors ${
-                    errorMessage 
+                    errorMessage && (errorMessage.toLowerCase().includes('password'))
                       ? 'border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500' 
                       : 'border-slate-700/80 focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400'
                   }`}

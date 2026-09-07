@@ -1,7 +1,13 @@
-import { DailyReportFormData, ProjectItem } from './types';
+import { DailyReportFormData, ProjectItem, AreaOption } from './types';
 
 // Empty initial projects as requested ("hapus semua data project dan kosong seperti baru")
 export const ACTIVE_PROJECTS: ProjectItem[] = [];
+
+export const AREA_OPTIONS: AreaOption[] = [
+  'Jabo 1',
+  'Jabo 2',
+  'Jabo 3',
+];
 
 export const WEATHER_OPTIONS = [
   '☀️ Cerah / Panas',
@@ -14,6 +20,7 @@ export const WEATHER_OPTIONS = [
 export const INITIAL_REPORT_DATA: DailyReportFormData = {
   projectName: '',
   projectId: '',
+  area: 'Jabo 1',
   waspangName: '',
   dayNumber: '1',
   reportDate: '2026-09-03',
@@ -24,11 +31,13 @@ export const INITIAL_REPORT_DATA: DailyReportFormData = {
   totalDurasi: '30',
   totalProgressSipil: '0',
   totalProgressKabel: '0',
+  totalProgressKabelCoax: '0',
   totalProgressHH: '0',
   totalProgressHB: '0',
   totalProgressMH: '0',
   baseTargetSipil: '',
   baseTargetKabel: '',
+  baseTargetKabelCoax: '',
   baseTargetHH: '',
   baseTargetHB: '',
   baseTargetMH: '',
@@ -46,6 +55,7 @@ export const INITIAL_REPORT_DATA: DailyReportFormData = {
     pulling96GL: '',
     pulling48: '',
     pulling24: '',
+    pullingCoax: '',
   },
   instalasiHH: {
     hh60x60: '',

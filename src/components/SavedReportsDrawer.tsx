@@ -110,6 +110,11 @@ export const SavedReportsDrawer: React.FC<SavedReportsDrawerProps> = ({
                         <span className="font-cyber font-bold text-white text-xs">
                           {report.projectName || 'Project Tanpa Nama'}
                         </span>
+                        {report.area && (
+                          <span className="text-[10px] font-mono-cyber px-1.5 py-0.2 rounded bg-indigo-950 border border-indigo-500/40 text-indigo-300 font-semibold">
+                            {report.area}
+                          </span>
+                        )}
                         {report.dayNumber && (
                           <span className="text-[10px] font-mono-cyber px-1.5 py-0.2 rounded bg-emerald-950 border border-emerald-500/40 text-emerald-300 font-semibold">
                             Hari ke-{report.dayNumber}
@@ -194,12 +199,15 @@ export const SavedReportsDrawer: React.FC<SavedReportsDrawerProps> = ({
                     const displayHB = report.totalProgressHB || totalHB.toString();
                     const displayMH = report.totalProgressMH || totalMH.toString();
                     return (
-                      <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5 py-1.5 px-2 rounded-lg bg-[#070e1c] border border-slate-800/60 font-mono-cyber text-[10px] sm:text-[11px]">
+                      <div className="grid grid-cols-2 sm:grid-cols-6 gap-1.5 py-1.5 px-2 rounded-lg bg-[#070e1c] border border-slate-800/60 font-mono-cyber text-[10px] sm:text-[11px]">
                         <div className="text-slate-400">
                           Sipil: <span className="text-white font-semibold">{report.totalProgressSipil || 0}m</span>
                         </div>
                         <div className="text-slate-400">
                           Kabel: <span className="text-emerald-400 font-semibold">{report.totalProgressKabel || 0}m</span>
+                        </div>
+                        <div className="text-slate-400">
+                          Coax: <span className="text-blue-300 font-semibold">{report.totalProgressKabelCoax || report.pulling?.pullingCoax || 0}m</span>
                         </div>
                         <div className="text-slate-400">
                           HH: <span className="text-amber-300 font-semibold">{displayHH}</span>

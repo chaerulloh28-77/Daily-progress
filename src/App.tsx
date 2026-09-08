@@ -604,6 +604,11 @@ export default function App() {
               onOpenClearScreen={() => setIsClearScreenModalOpen(true)}
               isEditing={!!editingReportId}
               onCancelEdit={handleCancelEdit}
+              onDeleteCurrentReport={() => {
+                if (editingReportId) {
+                  handleDeleteReport(editingReportId);
+                }
+              }}
             />
           </main>
 

@@ -421,52 +421,36 @@ export const AttachmentUploader: React.FC<AttachmentUploaderProps> = ({
 
       {/* Tombol Cepat Pengunggahan Lapangan (Mobile First Direct Actions) */}
       {totalUsedSlots < maxFiles && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mb-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mb-3">
           <button
             type="button"
             onClick={() => cameraInputRef.current?.click()}
-            className="flex items-center justify-center gap-2 py-2.5 px-3.5 rounded-xl bg-gradient-to-r from-emerald-600/90 to-teal-600/90 hover:from-emerald-500 hover:to-teal-500 text-white font-cyber font-bold text-xs shadow-lg shadow-emerald-950/40 border border-emerald-400/40 cursor-pointer active:scale-98 transition-all"
+            className="flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-cyber font-bold text-xs shadow-lg shadow-emerald-950/40 border border-emerald-400/40 cursor-pointer active:scale-98 transition-all"
           >
-            <Camera className="w-4 h-4 text-emerald-200 shrink-0" />
+            <Camera className="w-4 h-4 text-emerald-100 shrink-0" />
             <span>Foto Kamera Langsung (HP)</span>
           </button>
 
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
-            className="flex items-center justify-center gap-2 py-2.5 px-3.5 rounded-xl bg-gradient-to-r from-cyan-600/90 to-blue-600/90 hover:from-cyan-500 hover:to-blue-500 text-white font-cyber font-bold text-xs shadow-lg shadow-cyan-950/40 border border-cyan-400/40 cursor-pointer active:scale-98 transition-all"
+            className="flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-cyber font-bold text-xs shadow-lg shadow-cyan-950/40 border border-cyan-400/40 cursor-pointer active:scale-98 transition-all"
           >
-            <FolderOpen className="w-4 h-4 text-cyan-200 shrink-0" />
-            <span>Pilih Berkas Galeri / PDF</span>
+            <FolderOpen className="w-4 h-4 text-cyan-100 shrink-0" />
+            <span>Pilih Galeri / Dokumen</span>
           </button>
         </div>
       )}
 
-      {/* Info Banner */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 mb-4 p-3 rounded-xl bg-[#050b14] border border-slate-800 text-[11px] text-slate-400 font-sans">
-        <div className="flex items-start gap-2">
-          <Zap className="w-3.5 h-3.5 text-amber-400 shrink-0 mt-0.5" />
-          <span><strong>Kompresi Turbo:</strong> Cepat &le;0.5 detik, hemat kuota lapangan tanpa mengurangi ketajaman kabel.</span>
-        </div>
-        <div className="flex items-start gap-2">
-          <RefreshCw className="w-3.5 h-3.5 text-cyan-400 shrink-0 mt-0.5" />
-          <span><strong>Multi-File Paralel:</strong> Unggah banyak foto secara serentak bersamaan via Promise.all().</span>
-        </div>
-        <div className="flex items-start gap-2">
-          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-0.5" />
-          <span><strong>Resumable Storage:</strong> Aman saat sinyal HP drop, otomatis lanjut tanpa ulang dari awal.</span>
-        </div>
-      </div>
-
       {/* Error Message */}
       {errorMessage && (
-        <div className="mb-4 p-3 rounded-xl bg-red-950/60 border border-red-500/50 flex items-center gap-2.5 text-xs text-red-300">
+        <div className="mb-3 p-3 rounded-xl bg-red-950/60 border border-red-500/50 flex items-center gap-2.5 text-xs text-red-300">
           <AlertCircle className="w-4 h-4 text-red-400 shrink-0" />
           <span>{errorMessage}</span>
         </div>
       )}
 
-      {/* Upload Dropzone */}
+      {/* Upload Dropzone Ringkas & Cepat */}
       {totalUsedSlots < maxFiles && (
         <div
           onClick={() => fileInputRef.current?.click()}
@@ -476,17 +460,17 @@ export const AttachmentUploader: React.FC<AttachmentUploaderProps> = ({
             e.stopPropagation();
             handleFileSelect(e.dataTransfer.files);
           }}
-          className="border-2 border-dashed border-cyan-500/40 hover:border-cyan-400 bg-[#050b14]/70 hover:bg-[#071120] rounded-xl p-4 text-center cursor-pointer transition-all mb-4 group"
+          className="border border-dashed border-cyan-500/30 hover:border-cyan-400 bg-[#050b14]/60 hover:bg-[#071120] rounded-xl py-3 px-4 text-center cursor-pointer transition-all mb-4 group flex items-center justify-center gap-3"
         >
-          <div className="flex flex-col items-center justify-center">
-            <div className="w-10 h-10 rounded-full bg-cyan-950/60 border border-cyan-500/30 group-hover:border-cyan-400 flex items-center justify-center mb-1.5 transition-transform group-hover:scale-110">
-              <UploadCloud className="w-5 h-5 text-cyan-400" />
-            </div>
-            <p className="text-xs font-semibold text-slate-200 mb-0.5">
-              Ketuk untuk memilih berkas atau seret foto/PDF ke sini
+          <div className="w-8 h-8 rounded-lg bg-cyan-950/60 border border-cyan-500/30 group-hover:border-cyan-400 flex items-center justify-center shrink-0">
+            <UploadCloud className="w-4 h-4 text-cyan-400" />
+          </div>
+          <div className="text-left">
+            <p className="text-xs font-semibold text-slate-200">
+              Ketuk untuk tambah berkas atau seret ke sini
             </p>
-            <p className="text-[11px] font-mono-cyber text-slate-400">
-              Tersisa {maxFiles - totalUsedSlots} slot &bull; JPEG/PNG &bull; PDF maks 10MB
+            <p className="text-[10px] font-mono-cyber text-slate-400">
+              Tersedia {maxFiles - totalUsedSlots} slot &bull; Kompresi otomatis aktif &bull; JPEG, PNG, PDF
             </p>
           </div>
         </div>

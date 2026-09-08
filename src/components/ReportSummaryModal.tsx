@@ -287,19 +287,19 @@ export const ReportSummaryModal: React.FC<ReportSummaryModalProps> = ({
             </p>
           </div>
 
-          {/* Lampiran Berkas & Foto Lapangan (Cloud Storage) */}
-          <div className="bg-[#050b14] p-3.5 rounded-xl border border-cyan-500/20 space-y-2.5">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-cyber font-bold text-cyan-300 flex items-center gap-1.5">
-                <Paperclip className="w-3.5 h-3.5 text-cyan-400" />
-                <span>Lampiran Dokumen & Foto ({report.attachments?.length || 0}/8)</span>
-              </span>
-              <span className="text-[10px] font-mono-cyber text-slate-400">
-                Tersinkron Cloud
-              </span>
-            </div>
+          {/* Lampiran Berkas & Foto Lapangan (Hanya jika laporan memiliki berkas) */}
+          {report.attachments && report.attachments.length > 0 && (
+            <div className="bg-[#050b14] p-3.5 rounded-xl border border-cyan-500/20 space-y-2.5">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-cyber font-bold text-cyan-300 flex items-center gap-1.5">
+                  <Paperclip className="w-3.5 h-3.5 text-cyan-400" />
+                  <span>Lampiran Dokumen & Foto ({report.attachments.length})</span>
+                </span>
+                <span className="text-[10px] font-mono-cyber text-slate-400">
+                  Tersinkron Cloud
+                </span>
+              </div>
 
-            {report.attachments && report.attachments.length > 0 ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
                 {report.attachments.map((file, idx) => (
                   <div
@@ -340,12 +340,8 @@ export const ReportSummaryModal: React.FC<ReportSummaryModalProps> = ({
                   </div>
                 ))}
               </div>
-            ) : (
-              <p className="text-[11px] text-slate-500 font-mono-cyber italic">
-                Tidak ada berkas lampiran yang diunggah untuk laporan ini.
-              </p>
-            )}
-          </div>
+            </div>
+          )}
 
           {/* WhatsApp Direct Share Box */}
           <div className="p-3.5 rounded-xl bg-emerald-950/40 border border-emerald-500/40 space-y-2.5">

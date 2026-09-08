@@ -15,7 +15,14 @@ import {
   sendReportEditNotification,
   TARGET_EMAIL 
 } from './utils/emailHelper';
-import { syncReportToCloud, deleteReportFromCloud } from './services/cloudSync';
+import { 
+  syncReportToCloud, 
+  deleteReportFromCloud, 
+  subscribeToDailyReports,
+  subscribeToProjects,
+  saveProjectToCloud,
+  deleteProjectFromCloud 
+} from './services/cloudSync';
 
 export default function App() {
   // Auth state: Routing utama (/) langsung merender LoginPage tanpa splash screen atau intro
@@ -100,6 +107,31 @@ export default function App() {
     localStorage.setItem('gov_saved_reports', JSON.stringify(savedReports));
   }, [savedReports]);
 
+  // Real-time synchronization for daily reports & projects from Firebase Firestore (HP ⇋ Laptop)
+  useEffect(() => {
+    const unsubReports = subscribeToDailyReports(
+      (cloudReports) => {
+        if (cloudReports && cloudReports.length > 0) {
+          setSavedReports(cloudReports);
+        }
+      },
+      (err) => {
+        console.warn('Real-time sync daily_reports notification:', err);
+      }
+    );
+
+    const unsubProjects = subscribeToProjects((cloudProjects) => {
+      if (cloudProjects && cloudProjects.length > 0) {
+        setProjects(cloudProjects);
+      }
+    });
+
+    return () => {
+      unsubReports();
+      unsubProjects();
+    };
+  }, []);
+
   // Show temporary toast notification
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -139,6 +171,9 @@ export default function App() {
       createdAt: new Date().toISOString(),
     };
     setProjects((prev) => [newProject, ...prev]);
+    saveProjectToCloud(newProject).catch((err) => {
+      console.warn('Notice saving project to cloud:', err);
+    });
 
     // Automatically fill into form
     const projectTotalDurasi = newProject.durasiPekerjaan || newProject.totalDurasi || '30';
@@ -182,6 +217,9 @@ export default function App() {
 
   const handleUpdateProject = (updated: ProjectItem) => {
     setProjects((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
+    saveProjectToCloud(updated).catch((err) => {
+      console.warn('Notice updating project in cloud:', err);
+    });
     // If the active form is using this project, update its name as well
     if (formData.projectId === updated.id) {
       const projectTotalDurasi = updated.durasiPekerjaan || updated.totalDurasi || formData.totalDurasi || '30';
@@ -206,6 +244,9 @@ export default function App() {
   const handleDeleteProject = (id: string) => {
     const deleted = projects.find((p) => p.id === id);
     setProjects((prev) => prev.filter((p) => p.id !== id));
+    deleteProjectFromCloud(id).catch((err) => {
+      console.warn('Notice deleting project from cloud:', err);
+    });
     showToast(`Project "${deleted?.name || id}" telah dihapus.`);
   };
 

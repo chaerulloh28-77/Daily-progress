@@ -1,0 +1,94 @@
+{
+  "entities": {
+    "DailyReport": {
+      "title": "DailyReport",
+      "description": "Laporan harian progress lapangan PMO MS CKT yang disinkronkan real-time antara HP dan Laptop",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "projectName": { "type": "string", "maxLength": 200 },
+        "projectId": { "type": "string", "maxLength": 100 },
+        "area": { "type": "string", "maxLength": 50 },
+        "waspangName": { "type": "string", "maxLength": 100 },
+        "dayNumber": { "type": "string", "maxLength": 20 },
+        "reportDate": { "type": "string", "maxLength": 30 },
+        "weatherCondition": { "type": "string", "maxLength": 50 },
+        "startDate": { "type": "string", "maxLength": 30 },
+        "endDate": { "type": "string", "maxLength": 30 },
+        "durasiPekerjaan": { "type": "string", "maxLength": 30 },
+        "totalDurasi": { "type": "string", "maxLength": 30 },
+        "totalProgressSipil": { "type": "string", "maxLength": 50 },
+        "totalProgressKabel": { "type": "string", "maxLength": 50 },
+        "totalProgressKabelCoax": { "type": "string", "maxLength": 50 },
+        "boring": { "type": "object" },
+        "pulling": { "type": "object" },
+        "instalasiHH": { "type": "object" },
+        "instalasiHB": { "type": "object" },
+        "instalasiMH": { "type": "object" },
+        "instalasiMB": { "type": "object" },
+        "tiangGalvanisHDPE": { "type": "object" },
+        "dismantling": { "type": "object" },
+        "kendalaLapangan": { "type": "string", "maxLength": 2000 },
+        "attachments": { "type": "array" },
+        "submittedAt": { "type": "string", "maxLength": 50 },
+        "updatedAt": { "type": "string", "maxLength": 50 },
+        "authorEmail": { "type": "string", "maxLength": 100 },
+        "authorName": { "type": "string", "maxLength": 100 },
+        "authorRole": { "type": "string", "maxLength": 50 }
+      },
+      "required": ["projectName", "reportDate"]
+    },
+    "Project": {
+      "title": "Project",
+      "description": "Daftar master proyek yang tersimpan di cloud terpusat",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string", "maxLength": 200 },
+        "code": { "type": "string", "maxLength": 100 },
+        "location": { "type": "string", "maxLength": 200 },
+        "area": { "type": "string", "maxLength": 50 },
+        "startDate": { "type": "string", "maxLength": 30 },
+        "endDate": { "type": "string", "maxLength": 30 },
+        "durasiPekerjaan": { "type": "string", "maxLength": 30 },
+        "totalDurasi": { "type": "string", "maxLength": 30 },
+        "targetSipil": { "type": "string", "maxLength": 50 },
+        "targetKabel": { "type": "string", "maxLength": 50 },
+        "pic": { "type": "string", "maxLength": 100 },
+        "createdAt": { "type": "string", "maxLength": 50 }
+      },
+      "required": ["name"]
+    },
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Data profil pengguna tim lapangan",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "email": { "type": "string", "maxLength": 100 },
+        "displayName": { "type": "string", "maxLength": 100 },
+        "role": { "type": "string", "maxLength": 50 },
+        "createdAt": { "type": "string", "maxLength": 50 }
+      },
+      "required": ["email"]
+    }
+  },
+  "firestore": {
+    "/daily_reports/{reportId}": {
+      "schema": "DailyReport",
+      "description": "Koleksi dokumen laporan harian progress lapangan"
+    },
+    "/projects/{projectId}": {
+      "schema": "Project",
+      "description": "Koleksi data proyek"
+    },
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "Koleksi akun anggota tim dan waspang"
+    },
+    "/test/{docId}": {
+      "schema": "UserProfile",
+      "description": "Koleksi uji konektivitas firebase"
+    }
+  }
+}

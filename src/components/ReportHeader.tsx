@@ -126,9 +126,11 @@ export const ReportHeader: React.FC<ReportHeaderProps> = ({
               </h1>
             </div>
             <div className="flex items-center gap-2">
-              <span className="hidden sm:inline-flex items-center gap-1 text-[10px] font-mono-cyber text-emerald-400 bg-emerald-950/50 px-2 py-0.5 rounded-full border border-emerald-500/30" title="Sinkronisasi multi-perangkat siap via Firebase/Supabase">
+              <span className="inline-flex items-center gap-1.5 text-[10px] font-mono-cyber text-emerald-400 bg-emerald-950/70 px-2 py-0.5 rounded-full border border-emerald-500/40" title="Cloud Database Terpusat Aktif: Sinkronisasi HP ⇋ Laptop Real-Time">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                 <Cloud className="w-3 h-3 text-emerald-400" />
-                Sync Ready
+                <span className="hidden xs:inline">Cloud Terpusat (HP ⇋ Laptop)</span>
+                <span className="xs:hidden">Cloud Sync</span>
               </span>
               <span className="text-[10px] font-mono-cyber text-cyan-400/90 font-medium tracking-wider">
                 Designed by PAUL

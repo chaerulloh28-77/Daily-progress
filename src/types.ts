@@ -87,6 +87,16 @@ export interface CurrentUser {
   name?: string;
 }
 
+export interface ReportAttachment {
+  id: string;
+  name: string;
+  size: number;
+  type: 'image' | 'pdf' | 'document';
+  url?: string;
+  previewUrl?: string;
+  uploadedAt: string;
+}
+
 export interface DailyReportFormData {
   id?: string;
   projectName: string;
@@ -121,6 +131,7 @@ export interface DailyReportFormData {
   tiangGalvanisHDPE: TiangGalvanisHDPEProgress;
   dismantling: DismantlingProgress;
   kendalaLapangan: string;
+  attachments?: ReportAttachment[];
   submittedAt?: string;
   updatedAt?: string;
   // RBAC & Data Ownership fields

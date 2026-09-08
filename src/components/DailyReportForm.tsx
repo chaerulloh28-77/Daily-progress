@@ -25,9 +25,10 @@ import {
   Lock,
   MapPin
 } from 'lucide-react';
-import { DailyReportFormData, ProjectItem } from '../types';
+import { DailyReportFormData, ProjectItem, ReportAttachment } from '../types';
 import { WEATHER_OPTIONS, AREA_OPTIONS } from '../data';
 import { AccordionSection } from './AccordionSection';
+import { AttachmentUploader } from './AttachmentUploader';
 
 /**
  * Safely parses a YYYY-MM-DD string into a UTC midnight Date object
@@ -1939,6 +1940,15 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
       </div>
 
       {/* ========================================================================= */}
+      {/* LAMPIRAN BERKAS & FOTO LAPANGAN (CLOUD STORAGE) */}
+      {/* ========================================================================= */}
+      <AttachmentUploader
+        attachments={formData.attachments || []}
+        onChange={(newAttachments) => handleTopLevelChange('attachments', newAttachments)}
+        maxFiles={8}
+      />
+
+      {/* ========================================================================= */}
       {/* CATATAN AKHIR: KENDALA / ISU LAPANGAN */}
       {/* ========================================================================= */}
       <div className="bg-[#091224] border border-cyan-500/30 rounded-2xl p-4 sm:p-5 mb-8 shadow-xl shadow-cyan-950/20">
@@ -1957,10 +1967,8 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
             + Set 'Tidak ada kendala'
           </button>
         </div>
-
         <div>
           <textarea
-            id="textarea-kendala-lapangan"
             rows={3}
             value={formData.kendalaLapangan}
             onChange={(e) => handleTopLevelChange('kendalaLapangan', e.target.value)}

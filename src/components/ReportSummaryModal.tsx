@@ -15,7 +15,11 @@ import {
   Phone,
   User,
   Lock,
-  ShieldCheck
+  ShieldCheck,
+  Paperclip,
+  FileText,
+  Image as ImageIcon,
+  ExternalLink
 } from 'lucide-react';
 import { DailyReportFormData, CurrentUser } from '../types';
 import { calculateTotals, shareToWhatsApp, generateWhatsAppReportText } from '../utils/whatsapp';
@@ -277,6 +281,63 @@ export const ReportSummaryModal: React.FC<ReportSummaryModalProps> = ({
             <p className="text-xs text-slate-200 italic leading-relaxed">
               "{report.kendalaLapangan || 'Tidak ada kendala'}"
             </p>
+          </div>
+
+          {/* Lampiran Berkas & Foto Lapangan (Cloud Storage) */}
+          <div className="bg-[#050b14] p-3.5 rounded-xl border border-cyan-500/20 space-y-2.5">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-cyber font-bold text-cyan-300 flex items-center gap-1.5">
+                <Paperclip className="w-3.5 h-3.5 text-cyan-400" />
+                <span>Lampiran Dokumen & Foto ({report.attachments?.length || 0}/8)</span>
+              </span>
+              <span className="text-[10px] font-mono-cyber text-slate-400">
+                Tersinkron Cloud
+              </span>
+            </div>
+
+            {report.attachments && report.attachments.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                {report.attachments.map((file, idx) => (
+                  <div
+                    key={file.id || idx}
+                    className="flex items-center justify-between p-2 rounded-lg bg-[#081020] border border-slate-800 hover:border-slate-700 transition-colors"
+                  >
+                    <div className="flex items-center gap-2 min-w-0 flex-1">
+                      <div className="w-8 h-8 rounded bg-slate-900 border border-slate-800 flex items-center justify-center shrink-0">
+                        {file.type === 'pdf' ? (
+                          <FileText className="w-4 h-4 text-red-400" />
+                        ) : (
+                          <ImageIcon className="w-4 h-4 text-cyan-400" />
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <span className="text-[11px] font-medium text-slate-200 truncate block">
+                          {file.name}
+                        </span>
+                        <span className="text-[9px] font-mono-cyber text-slate-400 uppercase">
+                          {file.type} • {file.size ? `${(file.size / 1024).toFixed(0)} KB` : 'Cloud'}
+                        </span>
+                      </div>
+                    </div>
+                    {file.url && (
+                      <a
+                        href={file.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="p-1.5 rounded-md bg-slate-800 hover:bg-cyan-950 text-slate-300 hover:text-cyan-300 border border-slate-700 transition-colors shrink-0 ml-1.5"
+                        title="Buka / Download Berkas"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5" />
+                      </a>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-[11px] text-slate-500 font-mono-cyber italic">
+                Tidak ada berkas lampiran yang diunggah untuk laporan ini.
+              </p>
+            )}
           </div>
 
           {/* WhatsApp Direct Share Box */}

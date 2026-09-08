@@ -1,0 +1,30 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Connectivity test route
+    match /test/{docId} {
+      allow read, write: if true;
+    }
+
+    // Daily Reports - synchronized in real-time across HP and Laptop
+    match /daily_reports/{reportId} {
+      allow read: if true;
+      allow create, update: if request.resource.data.projectName is string &&
+                               request.resource.data.reportDate is string;
+      allow delete: if true;
+    }
+
+    // Master Projects - synchronized across devices
+    match /projects/{projectId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // User profiles
+    match /users/{userId} {
+      allow read: if true;
+      allow write: if true;
+    }
+  }
+}

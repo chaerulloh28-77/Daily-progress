@@ -1,0 +1,104 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <!-- Background Gradient -->
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#050b14" />
+      <stop offset="50%" stop-color="#071326" />
+      <stop offset="100%" stop-color="#02060d" />
+    </linearGradient>
+
+    <!-- Cyan to Emerald Brand Gradient -->
+    <linearGradient id="brandGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#06b6d4" />
+      <stop offset="50%" stop-color="#00f2fe" />
+      <stop offset="100%" stop-color="#10b981" />
+    </linearGradient>
+
+    <!-- Glowing Core Gradient -->
+    <radialGradient id="coreGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#00f2fe" stop-opacity="0.8" />
+      <stop offset="40%" stop-color="#06b6d4" stop-opacity="0.4" />
+      <stop offset="80%" stop-color="#0284c7" stop-opacity="0.1" />
+      <stop offset="100%" stop-color="#0284c7" stop-opacity="0" />
+    </radialGradient>
+
+    <!-- Fiber Strand 1 -->
+    <linearGradient id="fiber1" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#0284c7" />
+      <stop offset="50%" stop-color="#06b6d4" />
+      <stop offset="100%" stop-color="#38bdf8" />
+    </linearGradient>
+
+    <!-- Fiber Strand 2 -->
+    <linearGradient id="fiber2" x1="100%" y1="100%" x2="0%" y2="0%">
+      <stop offset="0%" stop-color="#059669" />
+      <stop offset="50%" stop-color="#10b981" />
+      <stop offset="100%" stop-color="#34d399" />
+    </linearGradient>
+
+    <!-- Filter for Glow Effect -->
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="8" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+
+    <filter id="softGlow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="16" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+
+  <!-- Rounded App Icon Background -->
+  <rect width="512" height="512" rx="112" fill="url(#bgGrad)" />
+
+  <!-- Outer Cyber Tech Border -->
+  <rect x="16" y="16" width="480" height="480" rx="98" fill="none" stroke="url(#brandGrad)" stroke-width="4" stroke-opacity="0.5" />
+  <rect x="28" y="28" width="456" height="456" rx="86" fill="none" stroke="#00f2fe" stroke-width="1.5" stroke-opacity="0.2" stroke-dasharray="16 12" />
+
+  <!-- Core Ambient Glow -->
+  <circle cx="256" cy="256" r="180" fill="url(#coreGlow)" />
+
+  <!-- Circuit & Grid Lines -->
+  <g stroke="#06b6d4" stroke-width="2" stroke-opacity="0.25">
+    <line x1="80" y1="256" x2="160" y2="256" />
+    <line x1="352" y1="256" x2="432" y2="256" />
+    <line x1="256" y1="80" x2="256" y2="160" />
+    <line x1="256" y1="352" x2="256" y2="432" />
+    <circle cx="80" cy="256" r="5" fill="#00f2fe" fill-opacity="0.8" />
+    <circle cx="432" cy="256" r="5" fill="#10b981" fill-opacity="0.8" />
+    <circle cx="256" cy="80" r="5" fill="#00f2fe" fill-opacity="0.8" />
+    <circle cx="256" cy="432" r="5" fill="#10b981" fill-opacity="0.8" />
+  </g>
+
+  <!-- Fiber Optic Strands / Wave Rays -->
+  <path d="M 100 380 C 180 380, 200 290, 256 256 C 310 220, 360 130, 420 130" fill="none" stroke="url(#fiber1)" stroke-width="8" stroke-linecap="round" filter="url(#glow)" />
+  <path d="M 92 130 C 150 130, 200 220, 256 256 C 312 292, 332 380, 412 380" fill="none" stroke="url(#fiber2)" stroke-width="8" stroke-linecap="round" filter="url(#glow)" />
+  <path d="M 140 420 C 210 390, 220 300, 256 256 C 292 212, 302 122, 372 92" fill="none" stroke="#38bdf8" stroke-width="4" stroke-linecap="round" stroke-opacity="0.7" />
+
+  <!-- Center Hexagonal Fiber Shield Node -->
+  <polygon points="256,156 342,206 342,306 256,356 170,306 170,206" fill="#050e1f" stroke="url(#brandGrad)" stroke-width="6" filter="url(#glow)" />
+  
+  <!-- Inner Hexagon Ring -->
+  <polygon points="256,176 324,216 324,296 256,336 188,296 188,216" fill="#07172f" stroke="#00f2fe" stroke-width="2" stroke-opacity="0.8" />
+
+  <!-- Fiber Cable Cross Section Pulse (Center 7 Optic Cores) -->
+  <circle cx="256" cy="256" r="18" fill="#ffffff" filter="url(#softGlow)" />
+  <circle cx="256" cy="256" r="14" fill="#00f2fe" />
+  
+  <!-- Surrounding 6 Optical Core Glass Nodes -->
+  <circle cx="256" cy="220" r="8" fill="#10b981" />
+  <circle cx="287" cy="238" r="8" fill="#06b6d4" />
+  <circle cx="287" cy="274" r="8" fill="#00f2fe" />
+  <circle cx="256" cy="292" r="8" fill="#10b981" />
+  <circle cx="225" cy="274" r="8" fill="#06b6d4" />
+  <circle cx="225" cy="238" r="8" fill="#00f2fe" />
+
+  <!-- Light Beam Sparkles -->
+  <path d="M 256 130 L 256 148 M 256 364 L 256 382 M 145 256 L 163 256 M 349 256 L 367 256" stroke="#00f2fe" stroke-width="4" stroke-linecap="round" filter="url(#glow)" />
+
+  <!-- GOV Telecom Monogram / Badge at bottom inside card -->
+  <g>
+    <rect x="186" y="382" width="140" height="32" rx="16" fill="#020c1b" stroke="#00f2fe" stroke-width="2" stroke-opacity="0.7" />
+    <text x="256" y="403" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="14" font-weight="800" fill="#00f2fe" letter-spacing="3">GOV-FO</text>
+  </g>
+</svg>

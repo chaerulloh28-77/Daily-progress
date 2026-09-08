@@ -4,6 +4,7 @@ import { PmoLogo } from './PmoLogo';
 import { LinkNetLogo } from './LinkNetLogo';
 import { sendLoginNotification } from '../utils/emailHelper';
 import { CurrentUser, UserRole } from '../types';
+import { MobileInstallBanner } from './MobileInstallBanner';
 
 interface LoginPageProps {
   onLoginSuccess: (user: CurrentUser) => void;
@@ -118,7 +119,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
           <div className="absolute -bottom-px left-8 right-8 h-px bg-gradient-to-r from-transparent via-emerald-400 to-transparent" />
           
           {/* Top Badge */}
-          <div className="flex items-center justify-between mb-5">
+          <div className="flex items-center justify-between mb-4">
             <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-cyan-950/80 border border-cyan-500/40 text-[11px] font-mono-cyber font-medium text-cyan-300">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
               <span>GOV SECURE PORTAL</span>
@@ -126,6 +127,23 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
             <div className="flex items-center gap-1 text-[11px] font-mono-cyber text-slate-400">
               <Radio className="w-3.5 h-3.5 text-emerald-400 animate-pulse" />
               <span>LIVE</span>
+            </div>
+          </div>
+
+          {/* Mobile App Icon */}
+          <div className="flex justify-center mb-3">
+            <div className="relative p-1 rounded-2xl bg-gradient-to-b from-cyan-500/40 via-cyan-500/10 to-transparent border border-cyan-500/40 shadow-xl shadow-cyan-500/20">
+              <img
+                src="/icon.svg"
+                alt="Icon Aplikasi GovMonitor"
+                className="w-13 h-13 sm:w-15 sm:h-15 rounded-xl object-contain bg-[#050b14] shadow-md"
+              />
+              <span className="absolute -bottom-1 -right-1 flex h-4 w-4">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-4 w-4 bg-cyan-400 text-[9px] text-black font-bold items-center justify-center">
+                  ⚡
+                </span>
+              </span>
             </div>
           </div>
 
@@ -293,6 +311,11 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
               )}
             </button>
           </form>
+        </div>
+
+        {/* Mobile App Icon / Add to Home Screen Banner */}
+        <div className="mt-2">
+          <MobileInstallBanner />
         </div>
 
         {/* Footer Brand Info */}

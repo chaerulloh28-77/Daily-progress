@@ -22,7 +22,7 @@ import {
 import { 
   getStorage, 
   ref, 
-  uploadBytes, 
+  uploadBytesResumable, 
   getDownloadURL 
 } from 'firebase/storage';
 import firebaseConfig from '../../firebase-applet-config.json';
@@ -231,17 +231,43 @@ export async function deleteProjectFromCloud(projectId: string): Promise<void> {
 // CLOUD STORAGE FOR ATTACHMENTS (PDF & Images)
 // ============================================================================
 
-export async function uploadReportAttachment(file: File): Promise<ReportAttachment> {
+export async function uploadReportAttachment(
+  file: File,
+  onProgress?: (progress: number) => void
+): Promise<ReportAttachment> {
   const fileId = `att_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
   const isImage = file.type.startsWith('image/');
   const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
   const type: 'image' | 'pdf' | 'document' = isImage ? 'image' : isPdf ? 'pdf' : 'document';
 
   try {
-    // Attempt upload to Firebase Storage Bucket
+    // Resumable upload to Firebase Storage Bucket
     const storageRef = ref(storage, `report_attachments/${fileId}_${file.name}`);
-    const snapshot = await uploadBytes(storageRef, file);
-    const downloadUrl = await getDownloadURL(snapshot.ref);
+    const uploadTask = uploadBytesResumable(storageRef, file);
+
+    const downloadUrl = await new Promise<string>((resolve, reject) => {
+      uploadTask.on(
+        'state_changed',
+        (snapshot) => {
+          if (snapshot.totalBytes > 0) {
+            const progress = Math.min(99, Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100));
+            if (onProgress) onProgress(progress);
+          }
+        },
+        (error) => {
+          reject(error);
+        },
+        async () => {
+          try {
+            const url = await getDownloadURL(uploadTask.snapshot.ref);
+            if (onProgress) onProgress(100);
+            resolve(url);
+          } catch (err) {
+            reject(err);
+          }
+        }
+      );
+    });
 
     return {
       id: fileId,
@@ -251,10 +277,17 @@ export async function uploadReportAttachment(file: File): Promise<ReportAttachme
       url: downloadUrl,
       previewUrl: isImage ? downloadUrl : undefined,
       uploadedAt: new Date().toISOString(),
+      status: 'completed',
+      uploadProgress: 100
     };
   } catch (storageErr) {
-    console.warn('Firebase Storage direct upload notice, using optimized client document storage:', storageErr);
+    console.warn('Firebase Storage resumable upload notice, using optimized client document storage fallback:', storageErr);
     
+    // Immediate progress callback for fast UI feedback
+    if (onProgress) {
+      onProgress(80);
+    }
+
     // Fallback to data URL for seamless offline & local preview
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -268,6 +301,8 @@ export async function uploadReportAttachment(file: File): Promise<ReportAttachme
           url: result,
           previewUrl: isImage ? result : undefined,
           uploadedAt: new Date().toISOString(),
+          status: 'completed',
+          uploadProgress: 100
         });
       };
       reader.onerror = () => reject(new Error('Gagal membaca berkas lampiran.'));

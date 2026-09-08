@@ -91,10 +91,15 @@ export interface ReportAttachment {
   id: string;
   name: string;
   size: number;
+  originalSize?: number;
+  compressedSize?: number;
+  compressionRatio?: string;
   type: 'image' | 'pdf' | 'document';
   url?: string;
   previewUrl?: string;
   uploadedAt: string;
+  uploadProgress?: number;
+  status?: 'compressing' | 'uploading' | 'completed' | 'error';
 }
 
 export interface DailyReportFormData {

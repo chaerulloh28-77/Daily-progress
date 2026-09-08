@@ -6,6 +6,7 @@ import { ReportSummaryModal } from './components/ReportSummaryModal';
 import { SavedReportsDrawer } from './components/SavedReportsDrawer';
 import { ProjectManagementModal } from './components/ProjectManagementModal';
 import { ClearScreenModal } from './components/ClearScreenModal';
+import { MobileInstallBanner } from './components/MobileInstallBanner';
 import { DailyReportFormData, ProjectItem, CurrentUser, UserRole } from './types';
 import { INITIAL_REPORT_DATA } from './data';
 import { CheckCircle } from 'lucide-react';
@@ -521,9 +522,14 @@ export default function App() {
     handleClearScreen('new_day');
   };
 
-  // Delete saved report
-  const handleDeleteReport = (index: number) => {
-    const target = savedReports[index];
+  // Delete saved report (supports reportId string or index number)
+  const handleDeleteReport = (targetReportOrId: string | number) => {
+    let target: DailyReportFormData | undefined;
+    if (typeof targetReportOrId === 'number') {
+      target = savedReports[targetReportOrId];
+    } else {
+      target = savedReports.find((r) => r.id === targetReportOrId);
+    }
     if (!target) return;
 
     const author = target.authorEmail || '';
@@ -534,7 +540,7 @@ export default function App() {
       return;
     }
 
-    setSavedReports((prev) => prev.filter((_, i) => i !== index));
+    setSavedReports((prev) => prev.filter((r) => r.id !== target!.id));
 
     // Sinkronisasi hapus ke cloud
     if (target.id) {
@@ -546,7 +552,10 @@ export default function App() {
     if (editingReportId && target?.id === editingReportId) {
       handleCancelEdit();
     }
-    showToast('Laporan dihapus dari riwayat.');
+    if (activeReportModal && activeReportModal.id === target.id) {
+      setActiveReportModal(null);
+    }
+    showToast(`Laporan "${target.projectName || 'Project'}" berhasil dihapus.`);
   };
 
   return (
@@ -583,7 +592,9 @@ export default function App() {
           />
 
           {/* Body Content / Form */}
-          <main className="flex-1 px-3 sm:px-5 pt-4 pb-8">
+          <main className="flex-1 px-3 sm:px-5 pt-2 pb-8">
+            <MobileInstallBanner />
+            
             <DailyReportForm
               formData={formData}
               onChange={setFormData}
@@ -596,13 +607,14 @@ export default function App() {
             />
           </main>
 
-          {/* Modal Recap / Success Preview with WhatsApp Sharing & Edit */}
+          {/* Modal Recap / Success Preview with WhatsApp Sharing, Edit & Delete */}
           <ReportSummaryModal
             report={activeReportModal}
             currentUser={currentUser}
             onClose={() => setActiveReportModal(null)}
             onNewReport={handleNewReport}
             onEditReport={handleStartEditReport}
+            onDeleteReport={handleDeleteReport}
           />
 
           {/* Saved Reports Drawer */}

@@ -19,7 +19,8 @@ import {
   Paperclip,
   FileText,
   Image as ImageIcon,
-  ExternalLink
+  ExternalLink,
+  Trash2
 } from 'lucide-react';
 import { DailyReportFormData, CurrentUser } from '../types';
 import { calculateTotals, shareToWhatsApp, generateWhatsAppReportText } from '../utils/whatsapp';
@@ -30,6 +31,7 @@ interface ReportSummaryModalProps {
   onClose: () => void;
   onNewReport: () => void;
   onEditReport?: (report: DailyReportFormData) => void;
+  onDeleteReport?: (reportId: string) => void;
 }
 
 export const ReportSummaryModal: React.FC<ReportSummaryModalProps> = ({
@@ -38,10 +40,12 @@ export const ReportSummaryModal: React.FC<ReportSummaryModalProps> = ({
   onClose,
   onNewReport,
   onEditReport,
+  onDeleteReport,
 }) => {
   const [copied, setCopied] = useState(false);
   const [whatsappPhone, setWhatsappPhone] = useState('');
   const [showPhoneInput, setShowPhoneInput] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   if (!report) return null;
 
@@ -315,7 +319,10 @@ export const ReportSummaryModal: React.FC<ReportSummaryModalProps> = ({
                           {file.name}
                         </span>
                         <span className="text-[9px] font-mono-cyber text-slate-400 uppercase">
-                          {file.type} • {file.size ? `${(file.size / 1024).toFixed(0)} KB` : 'Cloud'}
+                          {file.type} • {file.compressedSize ? `${(file.compressedSize / 1024).toFixed(0)} KB` : file.size ? `${(file.size / 1024).toFixed(0)} KB` : 'Cloud'}
+                          {file.compressionRatio && file.compressionRatio !== '0%' && (
+                            <span className="text-emerald-400 ml-1">({file.compressionRatio})</span>
+                          )}
                         </span>
                       </div>
                     </div>
@@ -433,6 +440,34 @@ export const ReportSummaryModal: React.FC<ReportSummaryModalProps> = ({
             )}
           </div>
 
+          {/* Konfirmasi Hapus Laporan dari Modal */}
+          {confirmDelete && (
+            <div className="p-3 rounded-xl bg-red-950/90 border border-red-500/80 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2 animate-fadeIn">
+              <span className="text-red-200">Hapus laporan ini secara permanen dari riwayat & cloud?</span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (onDeleteReport && report.id) {
+                      onDeleteReport(report.id);
+                    }
+                    onClose();
+                  }}
+                  className="px-3 py-1 rounded-lg bg-red-600 hover:bg-red-500 text-white font-bold text-xs cursor-pointer shadow"
+                >
+                  Ya, Hapus Sekarang
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setConfirmDelete(false)}
+                  className="px-3 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs cursor-pointer"
+                >
+                  Batal
+                </button>
+              </div>
+            </div>
+          )}
+
           {!canModify && (
             <div className="text-[10px] text-red-300/80 bg-red-950/40 border border-red-500/30 rounded-lg p-2 flex items-center gap-1.5 font-mono-cyber">
               <Lock className="w-3 h-3 text-red-400 shrink-0" />
@@ -440,19 +475,34 @@ export const ReportSummaryModal: React.FC<ReportSummaryModalProps> = ({
             </div>
           )}
 
-          <div className="flex items-center justify-between pt-1">
-            <button
-              type="button"
-              onClick={onNewReport}
-              className="text-[11px] text-cyan-400 hover:text-cyan-300 font-mono-cyber flex items-center gap-1"
-            >
-              <Plus className="w-3 h-3" />
-              <span>Buat Laporan Baru</span>
-            </button>
+          <div className="flex items-center justify-between pt-1 flex-wrap gap-2">
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={onNewReport}
+                className="text-[11px] text-cyan-400 hover:text-cyan-300 font-mono-cyber flex items-center gap-1 cursor-pointer"
+              >
+                <Plus className="w-3 h-3" />
+                <span>Buat Baru</span>
+              </button>
+
+              {onDeleteReport && canModify && !confirmDelete && (
+                <button
+                  type="button"
+                  onClick={() => setConfirmDelete(true)}
+                  className="text-[11px] text-red-400 hover:text-red-300 font-mono-cyber flex items-center gap-1 cursor-pointer"
+                  title="Hapus Laporan Ini"
+                >
+                  <Trash2 className="w-3 h-3" />
+                  <span>Hapus Laporan</span>
+                </button>
+              )}
+            </div>
+
             <button
               type="button"
               onClick={onClose}
-              className="text-[11px] text-slate-400 hover:text-slate-200 py-1 font-mono-cyber"
+              className="text-[11px] text-slate-400 hover:text-slate-200 py-1 font-mono-cyber cursor-pointer"
             >
               Tutup Pratinjau
             </button>

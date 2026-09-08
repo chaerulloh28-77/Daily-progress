@@ -80,8 +80,11 @@ export async function deleteReportFromCloud(
 /**
  * Mengunggah berkas lampiran (PDF / Gambar) ke Cloud Storage
  */
-export async function uploadAttachmentFile(file: File): Promise<ReportAttachment> {
-  return await uploadAttachmentToFirebase(file);
+export async function uploadAttachmentFile(
+  file: File,
+  onProgress?: (progress: number) => void
+): Promise<ReportAttachment> {
+  return await uploadAttachmentToFirebase(file, onProgress);
 }
 
 /**

@@ -1,5 +1,21 @@
-import React, { useState } from 'react';
-import { X, Calendar, MapPin, Eye, Trash2, Clock, MessageSquare, Edit3, Plus, Lock, User, Cloud } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { 
+  X, 
+  Calendar, 
+  MapPin, 
+  Eye, 
+  Trash2, 
+  Clock, 
+  MessageSquare, 
+  Edit3, 
+  Plus, 
+  Lock, 
+  User, 
+  Cloud, 
+  Paperclip,
+  Search,
+  Filter
+} from 'lucide-react';
 import { DailyReportFormData, CurrentUser } from '../types';
 import { shareToWhatsApp, calculateTotals } from '../utils/whatsapp';
 
@@ -10,7 +26,7 @@ interface SavedReportsDrawerProps {
   currentUser: CurrentUser;
   onSelectReport: (report: DailyReportFormData) => void;
   onEditReport: (report: DailyReportFormData) => void;
-  onDeleteReport: (index: number) => void;
+  onDeleteReport: (reportId: string) => void;
   onNewReport: () => void;
 }
 
@@ -24,18 +40,36 @@ export const SavedReportsDrawer: React.FC<SavedReportsDrawerProps> = ({
   onDeleteReport,
   onNewReport,
 }) => {
-  const [deleteConfirmIdx, setDeleteConfirmIdx] = useState<number | null>(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [areaFilter, setAreaFilter] = useState<string>('all');
+
+  const filteredReports = useMemo(() => {
+    const q = searchQuery.toLowerCase().trim();
+    return reports.filter((r) => {
+      const matchQuery = !q || 
+        (r.projectName && r.projectName.toLowerCase().includes(q)) ||
+        (r.projectId && r.projectId.toLowerCase().includes(q)) ||
+        (r.waspangName && r.waspangName.toLowerCase().includes(q)) ||
+        (r.reportDate && r.reportDate.toLowerCase().includes(q)) ||
+        (r.authorEmail && r.authorEmail.toLowerCase().includes(q)) ||
+        (r.kendalaLapangan && r.kendalaLapangan.toLowerCase().includes(q));
+
+      const matchArea = areaFilter === 'all' || r.area === areaFilter;
+      return matchQuery && matchArea;
+    });
+  }, [reports, searchQuery, areaFilter]);
 
   if (!isOpen) return null;
 
-  const handleDelete = (index: number) => {
-    onDeleteReport(index);
-    setDeleteConfirmIdx(null);
+  const handleDelete = (reportId: string) => {
+    onDeleteReport(reportId);
+    setDeleteConfirmId(null);
   };
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end bg-black/70 backdrop-blur-xs animate-fadeIn">
-      <div className="w-full max-w-sm h-full bg-[#080f1e] border-l border-cyan-500/30 flex flex-col shadow-2xl">
+      <div className="w-full max-w-sm sm:max-w-md h-full bg-[#080f1e] border-l border-cyan-500/30 flex flex-col shadow-2xl">
         {/* Drawer Header */}
         <div className="p-4 border-b border-slate-800 flex items-center justify-between bg-[#060c18]">
           <div className="flex items-center gap-2">
@@ -47,32 +81,58 @@ export const SavedReportsDrawer: React.FC<SavedReportsDrawerProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="p-1 rounded text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+            className="p-1 rounded text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Action bar */}
-        <div className="px-4 py-2.5 bg-[#050b14] border-b border-slate-800/80 flex items-center justify-between">
-          <span className="text-[11px] font-mono-cyber text-slate-400">
-            Arsip Harian Project
-          </span>
-          <button
-            type="button"
-            onClick={() => {
-              onNewReport();
-              onClose();
-            }}
-            className="inline-flex items-center gap-1 text-[11px] font-mono-cyber text-cyan-400 hover:text-cyan-300 bg-cyan-950/60 px-2 py-1 rounded border border-cyan-500/30"
-          >
-            <Plus className="w-3 h-3" />
-            <span>+ Laporan Baru</span>
-          </button>
+        {/* Action bar & Search */}
+        <div className="p-3 bg-[#050b14] border-b border-slate-800/80 space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-mono-cyber text-slate-400">
+              CRUD & Arsip Laporan
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                onNewReport();
+                onClose();
+              }}
+              className="inline-flex items-center gap-1 text-[11px] font-mono-cyber text-cyan-400 hover:text-cyan-300 bg-cyan-950/60 px-2.5 py-1 rounded-lg border border-cyan-500/30 cursor-pointer hover:bg-cyan-900/40 transition-colors"
+            >
+              <Plus className="w-3 h-3" />
+              <span>+ Buat Baru</span>
+            </button>
+          </div>
+
+          {/* Search Box & Area Filter */}
+          <div className="flex gap-1.5">
+            <div className="relative flex-1">
+              <Search className="w-3.5 h-3.5 text-slate-500 absolute left-2.5 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Cari project, waspang, tanggal..."
+                className="w-full bg-[#081022] border border-slate-700/80 rounded-lg pl-8 pr-2.5 py-1 text-xs text-slate-100 font-mono-cyber placeholder-slate-500 focus:outline-none focus:border-cyan-400 transition-colors"
+              />
+            </div>
+            <select
+              value={areaFilter}
+              onChange={(e) => setAreaFilter(e.target.value)}
+              className="bg-[#081022] border border-slate-700/80 rounded-lg px-2 py-1 text-[11px] font-mono-cyber text-slate-200 focus:outline-none focus:border-cyan-400 transition-colors"
+            >
+              <option value="all">Semua Area</option>
+              <option value="Jabo 1">Jabo 1</option>
+              <option value="Jabo 2">Jabo 2</option>
+              <option value="Jabo 3">Jabo 3</option>
+            </select>
+          </div>
         </div>
 
         {/* Reports List */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-3">
+        <div className="flex-1 overflow-y-auto p-3.5 space-y-3">
           {reports.length === 0 ? (
             <div className="text-center py-16 px-4 space-y-3">
               <div className="w-12 h-12 rounded-full bg-slate-900 border border-slate-800 text-slate-500 flex items-center justify-center mx-auto">
@@ -87,8 +147,18 @@ export const SavedReportsDrawer: React.FC<SavedReportsDrawerProps> = ({
                 </p>
               </div>
             </div>
+          ) : filteredReports.length === 0 ? (
+            <div className="text-center py-12 px-4 space-y-2">
+              <p className="text-xs font-bold text-slate-400 font-cyber">
+                Tidak ada laporan yang cocok
+              </p>
+              <p className="text-[11px] text-slate-500">
+                Pencarian "{searchQuery}" tidak menemukan laporan.
+              </p>
+            </div>
           ) : (
-            reports.map((report, idx) => {
+            filteredReports.map((report, idx) => {
+              const reportId = report.id || `rep-${idx}`;
               const author = report.authorEmail || '';
               const isOwner = !!(currentUser?.email && author && currentUser.email.toLowerCase() === author.toLowerCase());
               const isAdmin = currentUser?.role === 'admin';
@@ -96,7 +166,7 @@ export const SavedReportsDrawer: React.FC<SavedReportsDrawerProps> = ({
 
               return (
                 <div
-                  key={report.id || idx}
+                  key={reportId}
                   className="bg-[#0b1428] border border-slate-800 hover:border-cyan-500/50 rounded-xl p-3.5 transition-all text-xs space-y-2.5 shadow-md shadow-black/40"
                 >
                   <div className="flex items-start justify-between gap-1">
@@ -176,7 +246,7 @@ export const SavedReportsDrawer: React.FC<SavedReportsDrawerProps> = ({
                     {canModify ? (
                       <button
                         type="button"
-                        onClick={() => setDeleteConfirmIdx(idx)}
+                        onClick={() => setDeleteConfirmId(reportId)}
                         className="p-1 rounded text-slate-500 hover:text-red-400 hover:bg-red-950/40 transition-colors shrink-0 cursor-pointer"
                         title={isAdmin ? "Hapus Laporan (Akses Penuh Admin)" : "Hapus Laporan Milik Anda"}
                       >
@@ -229,27 +299,33 @@ export const SavedReportsDrawer: React.FC<SavedReportsDrawerProps> = ({
                   )}
 
                   {report.submittedAt && (
-                    <div className="text-[9px] text-slate-500 font-mono-cyber">
-                      Tersimpan: {report.submittedAt}
+                    <div className="flex items-center justify-between text-[9px] text-slate-500 font-mono-cyber">
+                      <span>Tersimpan: {report.submittedAt}</span>
+                      {report.attachments && report.attachments.length > 0 && (
+                        <span className="text-cyan-400 flex items-center gap-1">
+                          <Paperclip className="w-2.5 h-2.5" />
+                          <span>{report.attachments.length} Dokumen/Foto</span>
+                        </span>
+                      )}
                     </div>
                   )}
 
                   {/* Delete confirm inline */}
-                  {deleteConfirmIdx === idx && (
+                  {deleteConfirmId === reportId && (
                     <div className="p-2 rounded bg-red-950/90 border border-red-500/80 text-[11px] flex items-center justify-between gap-1 animate-fadeIn">
-                      <span className="text-red-200">Hapus laporan ini?</span>
+                      <span className="text-red-200">Hapus laporan ini secara permanen?</span>
                       <div className="flex items-center gap-1">
                         <button
                           type="button"
-                          onClick={() => handleDelete(idx)}
-                          className="px-2 py-0.5 rounded bg-red-600 text-white font-bold text-[10px]"
+                          onClick={() => handleDelete(reportId)}
+                          className="px-2 py-0.5 rounded bg-red-600 hover:bg-red-500 text-white font-bold text-[10px] cursor-pointer"
                         >
                           Ya, Hapus
                         </button>
                         <button
                           type="button"
-                          onClick={() => setDeleteConfirmIdx(null)}
-                          className="px-2 py-0.5 rounded bg-slate-800 text-slate-300 text-[10px]"
+                          onClick={() => setDeleteConfirmId(null)}
+                          className="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] cursor-pointer"
                         >
                           Batal
                         </button>
@@ -265,8 +341,8 @@ export const SavedReportsDrawer: React.FC<SavedReportsDrawerProps> = ({
                         onSelectReport(report);
                         onClose();
                       }}
-                      className="py-1 px-1.5 rounded bg-slate-800 hover:bg-slate-700 text-cyan-300 flex items-center justify-center gap-1 text-[10px] font-semibold transition-colors"
-                      title="Lihat Pratinjau Rekap"
+                      className="py-1.5 px-1.5 rounded bg-slate-800 hover:bg-slate-700 text-cyan-300 flex items-center justify-center gap-1 text-[10px] font-semibold transition-colors cursor-pointer"
+                      title="Lihat Pratinjau Rekap Lengkap"
                     >
                       <Eye className="w-3 h-3 text-cyan-400" />
                       <span>Rekap</span>
@@ -280,7 +356,7 @@ export const SavedReportsDrawer: React.FC<SavedReportsDrawerProps> = ({
                           onEditReport(report);
                           onClose();
                         }}
-                        className="py-1 px-1.5 rounded bg-amber-950/60 hover:bg-amber-900/80 border border-amber-500/40 text-amber-300 flex items-center justify-center gap-1 text-[10px] font-semibold transition-colors cursor-pointer"
+                        className="py-1.5 px-1.5 rounded bg-amber-950/60 hover:bg-amber-900/80 border border-amber-500/40 text-amber-300 flex items-center justify-center gap-1 text-[10px] font-semibold transition-colors cursor-pointer"
                         title={isAdmin ? "Sunting Data Laporan (Akses Penuh Admin)" : "Sunting & Edit Data Laporan Anda"}
                       >
                         <Edit3 className="w-3 h-3 text-amber-400" />
@@ -290,7 +366,7 @@ export const SavedReportsDrawer: React.FC<SavedReportsDrawerProps> = ({
                       <button
                         type="button"
                         disabled
-                        className="py-1 px-1.5 rounded bg-slate-900/90 border border-slate-800 text-slate-600 flex items-center justify-center gap-1 text-[10px] font-semibold cursor-not-allowed opacity-60"
+                        className="py-1.5 px-1.5 rounded bg-slate-900/90 border border-slate-800 text-slate-600 flex items-center justify-center gap-1 text-[10px] font-semibold cursor-not-allowed opacity-60"
                         title={`Edit Terkunci: Dibuat oleh ${author || 'user lain'}. Hanya pembuat atau Admin yang berhak mengedit.`}
                       >
                         <Lock className="w-3 h-3 text-slate-600" />
@@ -301,7 +377,7 @@ export const SavedReportsDrawer: React.FC<SavedReportsDrawerProps> = ({
                     <button
                       type="button"
                       onClick={() => shareToWhatsApp(report)}
-                      className="py-1 px-1.5 rounded bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-500/40 text-emerald-300 flex items-center justify-center gap-1 text-[10px] font-semibold transition-colors"
+                      className="py-1.5 px-1.5 rounded bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-500/40 text-emerald-300 flex items-center justify-center gap-1 text-[10px] font-semibold transition-colors cursor-pointer"
                       title="Bagikan Laporan via WhatsApp"
                     >
                       <MessageSquare className="w-3 h-3 text-emerald-400" />

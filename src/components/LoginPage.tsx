@@ -292,41 +292,6 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
                 <span>Masuk Sistem</span>
               )}
             </button>
-
-            {/* Quick Login Presets for HP & Laptop testing */}
-            <div className="pt-2 border-t border-slate-800/80">
-              <div className="flex items-center justify-between text-[10px] font-mono-cyber text-slate-400 mb-1.5">
-                <span>Login Cepat (HP / Laptop):</span>
-                <span className="text-emerald-400 flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                  Cloud Terpusat Aktif
-                </span>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setEmail('admin@gov.com');
-                    setPassword('gov_123');
-                    setErrorMessage('');
-                  }}
-                  className="py-1.5 px-2 rounded-lg bg-amber-950/40 hover:bg-amber-900/60 border border-amber-500/40 text-amber-300 text-[10px] font-mono-cyber font-medium transition-colors cursor-pointer text-center"
-                >
-                  ⚡ Admin 1-Klik
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setEmail('waspang@gov.com');
-                    setPassword('waspang_gov123');
-                    setErrorMessage('');
-                  }}
-                  className="py-1.5 px-2 rounded-lg bg-cyan-950/40 hover:bg-cyan-900/60 border border-cyan-500/40 text-cyan-300 text-[10px] font-mono-cyber font-medium transition-colors cursor-pointer text-center"
-                >
-                  ⚡ Waspang 1-Klik
-                </button>
-              </div>
-            </div>
           </form>
         </div>
 

@@ -6,11 +6,7 @@ import {
   CheckCircle2, 
   Clock, 
   Eye, 
-  Sun, 
-  HardDrive,
-  Info,
-  ChevronDown,
-  ChevronUp
+  Sun 
 } from 'lucide-react';
 import { 
   subscribeToBackgroundSync, 
@@ -25,7 +21,6 @@ export const BackgroundStatusBanner: React.FC = () => {
   const [pendingCount, setPendingCount] = useState(0);
   const [isSyncing, setIsSyncing] = useState(false);
   const [lastSyncTime, setLastSyncTime] = useState<string | null>(null);
-  const [isExpanded, setIsExpanded] = useState(false);
   const [isWakeLockOn, setIsWakeLockOn] = useState(false);
   const [draftSavedToast, setDraftSavedToast] = useState(false);
 
@@ -143,12 +138,6 @@ export const BackgroundStatusBanner: React.FC = () => {
               </span>
             </span>
 
-            <span className="inline-flex items-center gap-1 text-[11px] text-slate-300 font-medium">
-              <HardDrive className="w-3.5 h-3.5 text-cyan-400" />
-              <span>Background Engine:</span>
-              <span className="text-cyan-300 font-semibold">Aktif</span>
-            </span>
-
             {lastSyncTime && (
               <span className="hidden sm:inline-block text-[10px] text-slate-400">
                 (Sinkron: {formatTime(lastSyncTime)})
@@ -174,42 +163,8 @@ export const BackgroundStatusBanner: React.FC = () => {
                 {isWakeLockOn ? 'Layar Terjaga ON' : 'Jaga Layar'}
               </span>
             </button>
-
-            {/* Expand details button */}
-            <button
-              type="button"
-              onClick={() => setIsExpanded(!isExpanded)}
-              className="p-1 rounded-md text-slate-400 hover:text-cyan-300 hover:bg-slate-800/60 transition-colors cursor-pointer"
-              title="Lihat Detail Kerja Latar Belakang"
-            >
-              {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-            </button>
           </div>
         </div>
-
-        {/* Collapsible details info */}
-        {isExpanded && (
-          <div className="mt-2.5 pt-2 border-t border-slate-800/80 text-[11px] text-slate-400 space-y-1.5 animate-fadeIn">
-            <div className="flex items-center gap-2 text-cyan-300 font-medium">
-              <Info className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
-              <span>Fitur Kerja Dibalik Layar (Background Capabilities):</span>
-            </div>
-            <ul className="list-disc pl-5 space-y-1 text-slate-300 text-[10.5px]">
-              <li>
-                <strong>PWA Service Worker Caching:</strong> Aset aplikasi tersimpan di memori perangkat, sehingga dapat dibuka dan digunakan meski tanpa sinyal.
-              </li>
-              <li>
-                <strong>Background Auto-Save:</strong> Formulir otomatis tersimpan saat Anda berpindah ke aplikasi lain (WhatsApp/Kamera), tab diminimalkan, atau layar HP mati.
-              </li>
-              <li>
-                <strong>Offline Queue & Background Sync:</strong> Laporan yang disimpan saat sinyal hilang akan masuk ke antrean lokal dan otomatis terunggah ke Cloud saat jaringan pulih.
-              </li>
-              <li>
-                <strong>Database IndexedDB Persistence:</strong> Data proyek dan riwayat tetap dapat dibaca secara instan tanpa perlu memuat ulang server.
-              </li>
-            </ul>
-          </div>
-        )}
       </div>
     </div>
   );

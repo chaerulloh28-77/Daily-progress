@@ -44,8 +44,9 @@ export type ProjectOption = ProjectItem;
 export interface BoringProgress {
   boringAlur: string;
   boringCrossingJalan: string;
-  boringCrossingJalanTol: string;
+  boringAkses: string;
   boringCrossingJembatan: string;
+  boringCrossingJalanTol?: string;
 }
 
 export interface PullingProgress {
@@ -63,6 +64,7 @@ export interface HHProgress {
   hh60x60: string;
   hh80x80: string;
   hh100x100: string;
+  hh110x110?: string;
   hh120x120: string;
 }
 
@@ -70,12 +72,14 @@ export interface HBProgress {
   hb60x60: string;
   hb80x80: string;
   hb100x100: string;
+  hb110x110?: string;
   hb120x120: string;
 }
 
 export interface MHProgress {
   mh80x80: string;
   mh100x100: string;
+  mh110x110?: string;
   mh120x120: string;
 }
 
@@ -88,7 +92,9 @@ export interface MBProgress {
 export interface TiangGalvanisHDPEProgress {
   tiangBersama: string;
   galvanis2Inch: string;
-  galvanis4Inch: string;
+  galvanis4Inch?: string;
+  galvanisATB?: string;
+  galvanisATBOption?: 'Galv 4"' | 'Galv 6"' | string;
   instalHDPE: string;
 }
 
@@ -157,6 +163,7 @@ export interface DailyReportFormData {
   instalasiMB: MBProgress;
   tiangGalvanisHDPE: TiangGalvanisHDPEProgress;
   dismantling: DismantlingProgress;
+  remarks?: string;
   kendalaLapangan: string;
   attachments?: ReportAttachment[];
   submittedAt?: string;

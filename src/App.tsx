@@ -4,7 +4,6 @@ import { ReportHeader } from './components/ReportHeader';
 import { DailyReportForm } from './components/DailyReportForm';
 import { ReportSummaryModal } from './components/ReportSummaryModal';
 import { SavedReportsDrawer } from './components/SavedReportsDrawer';
-import { ProjectManagementModal } from './components/ProjectManagementModal';
 import { ClearScreenModal } from './components/ClearScreenModal';
 import { MobileInstallBanner } from './components/MobileInstallBanner';
 import { BackgroundStatusBanner } from './components/BackgroundStatusBanner';
@@ -22,7 +21,6 @@ import {
   deleteReportFromCloud, 
   subscribeToDailyReports,
   subscribeToProjects,
-  saveProjectToCloud,
   deleteProjectFromCloud 
 } from './services/cloudSync';
 import { 
@@ -31,8 +29,12 @@ import {
 } from './services/backgroundSync';
 
 export default function App() {
-  // Auth state: Routing utama (/) langsung merender LoginPage tanpa splash screen atau intro
-  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
+  // Auth state: Session login permanen di memori & storage agar tidak pernah logout saat di-minimize atau berjalan di background
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => {
+    const loggedIn = localStorage.getItem('gov_logged_in');
+    const email = localStorage.getItem('gov_user_email');
+    return loggedIn === 'true' && Boolean(email);
+  });
   const [userEmail, setUserEmail] = useState<string>(() => {
     return localStorage.getItem('gov_user_email') || '';
   });
@@ -105,7 +107,6 @@ export default function App() {
   // Modals & Drawers state
   const [activeReportModal, setActiveReportModal] = useState<DailyReportFormData | null>(null);
   const [isHistoryDrawerOpen, setIsHistoryDrawerOpen] = useState(false);
-  const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
   const [isClearScreenModalOpen, setIsClearScreenModalOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
@@ -139,6 +140,37 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('gov_saved_reports', JSON.stringify(savedReports));
   }, [savedReports]);
+
+  // Jaga integritas login session: Tidak pernah logout saat aplikasi di-minimize atau kembali dari background / WhatsApp
+  useEffect(() => {
+    const maintainSession = () => {
+      const isLogged = localStorage.getItem('gov_logged_in') === 'true';
+      const storedEmail = localStorage.getItem('gov_user_email');
+      if (isLogged && storedEmail && !isLoggedIn) {
+        setIsLoggedIn(true);
+        setUserEmail(storedEmail);
+        const savedRole = (localStorage.getItem('gov_user_role') as UserRole) || 'waspang';
+        setCurrentUser({
+          email: storedEmail,
+          role: savedRole,
+          name: savedRole === 'admin' ? 'Administrator' : storedEmail.split('@')[0],
+        });
+      }
+    };
+
+    window.addEventListener('focus', maintainSession);
+    window.addEventListener('pageshow', maintainSession);
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') {
+        maintainSession();
+      }
+    });
+
+    return () => {
+      window.removeEventListener('focus', maintainSession);
+      window.removeEventListener('pageshow', maintainSession);
+    };
+  }, [isLoggedIn]);
 
   // Real-time synchronization for daily reports & projects from Firebase Firestore (HP ⇋ Laptop)
   useEffect(() => {
@@ -207,170 +239,95 @@ export default function App() {
     showToast('Anda telah keluar dari sistem.');
   };
 
-  // ==========================================
-  // PROJECT CRUD HANDLERS
-  // ==========================================
-  const handleAddProject = (projectData: Omit<ProjectItem, 'id' | 'createdAt'>) => {
-    const newProject: ProjectItem = {
-      ...projectData,
-      id: 'proj-' + Date.now(),
-      createdAt: new Date().toISOString(),
+  // Helper generate fresh empty report form
+  const createCleanFormData = (): DailyReportFormData => {
+    const todayStr = new Date().toISOString().split('T')[0];
+    return {
+      ...INITIAL_REPORT_DATA,
+      reportDate: todayStr,
+      dayNumber: '1',
+      projectName: '',
+      projectId: '',
+      projectCategory: 'Relokasi Government',
+      jenisPengamanan: '',
+      subJenisPerapihanAsset: [],
+      keteranganPengamanan: '',
+      area: 'Jabo 1',
+      waspangName: '',
+      startDate: '',
+      endDate: '',
+      durasiPekerjaan: '30',
+      totalDurasi: '30',
+      totalProgressSipil: '0',
+      totalProgressKabel: '0',
+      totalProgressKabelCoax: '0',
+      totalProgressHH: '0',
+      totalProgressHB: '0',
+      totalProgressMH: '0',
+      baseTargetSipil: '',
+      baseTargetKabel: '',
+      baseTargetKabelCoax: '',
+      baseTargetHH: '',
+      baseTargetHB: '',
+      baseTargetMH: '',
+      boring: {
+        boringAlur: '',
+        boringCrossingJalan: '',
+        boringAkses: '',
+        boringCrossingJalanTol: '',
+        boringCrossingJembatan: '',
+      },
+      pulling: {
+        pulling288: '',
+        pulling288GL: '',
+        pulling144: '',
+        pulling96: '',
+        pulling96GL: '',
+        pulling48: '',
+        pulling24: '',
+        pullingCoax: '',
+      },
+      instalasiHH: {
+        hh60x60: '',
+        hh80x80: '',
+        hh100x100: '',
+        hh110x110: '',
+        hh120x120: '',
+      },
+      instalasiHB: {
+        hb60x60: '',
+        hb80x80: '',
+        hb100x100: '',
+        hb110x110: '',
+        hb120x120: '',
+      },
+      instalasiMH: {
+        mh80x80: '',
+        mh100x100: '',
+        mh110x110: '',
+        mh120x120: '',
+      },
+      instalasiMB: {
+        mb80x80: '',
+        mb100x100: '',
+        mb120x120: '',
+      },
+      tiangGalvanisHDPE: {
+        tiangBersama: '',
+        galvanis2Inch: '',
+        galvanis4Inch: '',
+        galvanisATB: '',
+        galvanisATBOption: 'Galv 4"',
+        instalHDPE: '',
+      },
+      dismantling: {
+        dismantleKabel: '',
+        dismantleTiang: '',
+      },
+      remarks: '',
+      kendalaLapangan: '',
+      attachments: [],
     };
-    setProjects((prev) => [newProject, ...prev]);
-    saveProjectToCloud(newProject).catch((err) => {
-      console.warn('Notice saving project to cloud:', err);
-    });
-
-    // Automatically fill into form
-    const projectTotalDurasi = newProject.durasiPekerjaan || newProject.totalDurasi || '30';
-    const curDay = parseInt(formData.dayNumber || '1', 10);
-    const dayCount = !isNaN(curDay) && curDay >= 1 ? curDay : 1;
-    const computedDurasi = Math.max(0, parseFloat(projectTotalDurasi) - dayCount).toString();
-
-    const baseSipil = newProject.targetSipil || '1000';
-    const baseKabel = newProject.targetKabel || '2000';
-    const baseCoax = newProject.targetKabelCoax || '0';
-    const baseHH = newProject.targetHH || '10';
-    const baseHB = newProject.targetHB || '10';
-    const baseMH = newProject.targetMH || '5';
-
-    setFormData((prev) => ({
-      ...prev,
-      projectName: newProject.name,
-      projectId: newProject.code || newProject.id,
-      area: newProject.area || prev.area || 'Jabo 1',
-      waspangName: newProject.pic || prev.waspangName || '',
-      startDate: newProject.startDate || prev.startDate,
-      endDate: newProject.endDate || prev.endDate,
-      durasiPekerjaan: computedDurasi,
-      totalDurasi: projectTotalDurasi,
-      baseTargetSipil: baseSipil,
-      baseTargetKabel: baseKabel,
-      baseTargetKabelCoax: baseCoax,
-      baseTargetHH: baseHH,
-      baseTargetHB: baseHB,
-      baseTargetMH: baseMH,
-      totalProgressSipil: baseSipil,
-      totalProgressKabel: baseKabel,
-      totalProgressKabelCoax: baseCoax,
-      totalProgressHH: baseHH,
-      totalProgressHB: baseHB,
-      totalProgressMH: baseMH,
-    }));
-
-    showToast(`Project "${newProject.name}" berhasil ditambahkan.`);
-  };
-
-  const handleUpdateProject = (updated: ProjectItem) => {
-    setProjects((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
-    saveProjectToCloud(updated).catch((err) => {
-      console.warn('Notice updating project in cloud:', err);
-    });
-    // If the active form is using this project, update its name as well
-    if (formData.projectId === updated.id) {
-      const projectTotalDurasi = updated.durasiPekerjaan || updated.totalDurasi || formData.totalDurasi || '30';
-      const curDay = parseInt(formData.dayNumber || '1', 10);
-      const dayCount = !isNaN(curDay) && curDay >= 1 ? curDay : 1;
-      const computedDurasi = Math.max(0, parseFloat(projectTotalDurasi) - dayCount).toString();
-
-      setFormData((prev) => ({
-        ...prev,
-        projectName: updated.name,
-        area: updated.area || prev.area || 'Jabo 1',
-        waspangName: updated.pic || prev.waspangName || '',
-        startDate: updated.startDate || prev.startDate,
-        endDate: updated.endDate || prev.endDate,
-        durasiPekerjaan: computedDurasi,
-        totalDurasi: projectTotalDurasi,
-      }));
-    }
-    showToast(`Project "${updated.name}" berhasil diperbarui.`);
-  };
-
-  const handleDeleteProject = (id: string) => {
-    const deleted = projects.find((p) => p.id === id);
-    setProjects((prev) => prev.filter((p) => p.id !== id));
-    deleteProjectFromCloud(id).catch((err) => {
-      console.warn('Notice deleting project from cloud:', err);
-    });
-    showToast(`Project "${deleted?.name || id}" telah dihapus.`);
-  };
-
-  const handleSelectProject = (project: ProjectItem) => {
-    const projectTotalDurasi = project.durasiPekerjaan || project.totalDurasi || formData.totalDurasi || '30';
-    const curDay = parseInt(formData.dayNumber || '1', 10);
-    const dayCount = !isNaN(curDay) && curDay >= 1 ? curDay : 1;
-    const computedDurasi = Math.max(0, parseFloat(projectTotalDurasi) - dayCount).toString();
-
-    const baseSipil = project.targetSipil || formData.baseTargetSipil || '1000';
-    const baseKabel = project.targetKabel || formData.baseTargetKabel || '2000';
-    const baseCoax = project.targetKabelCoax || formData.baseTargetKabelCoax || '0';
-    const baseHH = project.targetHH || formData.baseTargetHH || '10';
-    const baseHB = project.targetHB || formData.baseTargetHB || '10';
-    const baseMH = project.targetMH || formData.baseTargetMH || '5';
-
-    const curBoring = 
-      (parseFloat(formData.boring.boringAlur) || 0) +
-      (parseFloat(formData.boring.boringCrossingJalan) || 0) +
-      (parseFloat(formData.boring.boringCrossingJalanTol) || 0) +
-      (parseFloat(formData.boring.boringCrossingJembatan) || 0);
-
-    const curPulling = 
-      (parseFloat(formData.pulling.pulling288) || 0) +
-      (parseFloat(formData.pulling.pulling288GL) || 0) +
-      (parseFloat(formData.pulling.pulling144) || 0) +
-      (parseFloat(formData.pulling.pulling96) || 0) +
-      (parseFloat(formData.pulling.pulling96GL) || 0) +
-      (parseFloat(formData.pulling.pulling48) || 0) +
-      (parseFloat(formData.pulling.pulling24) || 0);
-
-    const curPullingCoax = parseFloat(formData.pulling?.pullingCoax || '0') || 0;
-
-    const curHH = 
-      (parseFloat(formData.instalasiHH.hh60x60) || 0) +
-      (parseFloat(formData.instalasiHH.hh80x80) || 0) +
-      (parseFloat(formData.instalasiHH.hh100x100) || 0) +
-      (parseFloat(formData.instalasiHH.hh120x120) || 0);
-
-    const curHB = 
-      (parseFloat(formData.instalasiHB.hb60x60) || 0) +
-      (parseFloat(formData.instalasiHB.hb80x80) || 0) +
-      (parseFloat(formData.instalasiHB.hb100x100) || 0) +
-      (parseFloat(formData.instalasiHB.hb120x120) || 0);
-
-    const curMH = 
-      (parseFloat(formData.instalasiMH.mh80x80) || 0) +
-      (parseFloat(formData.instalasiMH.mh100x100) || 0) +
-      (parseFloat(formData.instalasiMH.mh120x120) || 0);
-
-    setFormData((prev) => ({
-      ...prev,
-      projectName: project.name,
-      projectId: project.code || project.id,
-      projectCategory: project.category || prev.projectCategory || 'Relokasi Government',
-      jenisPengamanan: project.jenisPengamanan || (project.category === 'Pengamanan' ? prev.jenisPengamanan : ''),
-      subJenisPerapihanAsset: project.subJenisPerapihanAsset || (project.category === 'Pengamanan' ? prev.subJenisPerapihanAsset : []),
-      area: project.area || prev.area || 'Jabo 1',
-      waspangName: project.pic || prev.waspangName || '',
-      startDate: project.startDate || prev.startDate,
-      endDate: project.endDate || prev.endDate,
-      durasiPekerjaan: computedDurasi,
-      totalDurasi: projectTotalDurasi,
-      baseTargetSipil: baseSipil,
-      baseTargetKabel: baseKabel,
-      baseTargetKabelCoax: baseCoax,
-      baseTargetHH: baseHH,
-      baseTargetHB: baseHB,
-      baseTargetMH: baseMH,
-      totalProgressSipil: Math.max(0, (parseFloat(baseSipil) || 0) - curBoring).toString(),
-      totalProgressKabel: Math.max(0, (parseFloat(baseKabel) || 0) - curPulling).toString(),
-      totalProgressKabelCoax: baseCoax !== '0' ? Math.max(0, (parseFloat(baseCoax) || 0) - curPullingCoax).toString() : (prev.totalProgressKabelCoax || curPullingCoax.toString()),
-      totalProgressHH: Math.max(0, (parseFloat(baseHH) || 0) - curHH).toString(),
-      totalProgressHB: Math.max(0, (parseFloat(baseHB) || 0) - curHB).toString(),
-      totalProgressMH: Math.max(0, (parseFloat(baseMH) || 0) - curMH).toString(),
-    }));
-    setIsProjectModalOpen(false);
-    showToast(`Project terpilih: "${project.name}"`);
   };
 
   // ==========================================
@@ -440,6 +397,12 @@ export default function App() {
 
       setEditingReportId(null);
       setActiveReportModal(updatedReport);
+
+      // Kosongkan layar/tampilan setelah menyimpan
+      const cleanForm = createCleanFormData();
+      setFormData(cleanForm);
+      localStorage.setItem('gov_current_draft', JSON.stringify(cleanForm));
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     } else {
       // CREATE NEW REPORT
       const newReportId = 'rep-' + Date.now();
@@ -478,6 +441,12 @@ export default function App() {
       }
 
       setActiveReportModal(reportWithTimestamp);
+
+      // Kosongkan layar/tampilan setelah menyimpan
+      const cleanForm = createCleanFormData();
+      setFormData(cleanForm);
+      localStorage.setItem('gov_current_draft', JSON.stringify(cleanForm));
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
 
@@ -502,8 +471,11 @@ export default function App() {
   // Cancel edit mode
   const handleCancelEdit = () => {
     setEditingReportId(null);
-    handleClearScreen('new_day');
-    showToast('Mode edit dibatalkan.');
+    const cleanForm = createCleanFormData();
+    setFormData(cleanForm);
+    localStorage.setItem('gov_current_draft', JSON.stringify(cleanForm));
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    showToast('Mode edit dibatalkan. Layar dikosongkan.');
   };
 
   // Helper calculate next day number if same project has reports
@@ -579,11 +551,9 @@ export default function App() {
       showToast(`Layar dibersihkan: siap input progres Hari Ke-${nextDay}`);
     } else {
       // Full reset to blank form
-      setFormData({
-        ...INITIAL_REPORT_DATA,
-        reportDate: todayStr,
-        dayNumber: '1',
-      });
+      const cleanForm = createCleanFormData();
+      setFormData(cleanForm);
+      localStorage.setItem('gov_current_draft', JSON.stringify(cleanForm));
       window.scrollTo({ top: 0, behavior: 'smooth' });
       showToast('Layar telah dibersihkan sepenuhnya (Reset Total).');
     }
@@ -659,7 +629,6 @@ export default function App() {
             onLogout={handleLogout}
             savedReportsCount={savedReports.length}
             onOpenHistory={() => setIsHistoryDrawerOpen(true)}
-            onOpenProjects={() => setIsProjectModalOpen(true)}
             onOpenClearScreen={() => setIsClearScreenModalOpen(true)}
           />
 
@@ -673,7 +642,6 @@ export default function App() {
               onChange={setFormData}
               onSubmit={handleFormSubmit}
               projects={projects}
-              onOpenProjectManagement={() => setIsProjectModalOpen(true)}
               onOpenClearScreen={() => setIsClearScreenModalOpen(true)}
               isEditing={!!editingReportId}
               onCancelEdit={handleCancelEdit}
@@ -707,18 +675,6 @@ export default function App() {
             onEditReport={handleStartEditReport}
             onDeleteReport={handleDeleteReport}
             onNewReport={handleNewReport}
-          />
-
-          {/* Project Management Modal (CRUD) */}
-          <ProjectManagementModal
-            isOpen={isProjectModalOpen}
-            onClose={() => setIsProjectModalOpen(false)}
-            projects={projects}
-            onAddProject={handleAddProject}
-            onUpdateProject={handleUpdateProject}
-            onDeleteProject={handleDeleteProject}
-            onSelectProject={handleSelectProject}
-            currentProjectName={formData.projectName}
           />
 
           {/* Clear Screen Modal */}

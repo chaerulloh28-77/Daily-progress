@@ -161,6 +161,7 @@ export const INITIAL_REPORT_DATA: DailyReportFormData = {
   boring: {
     boringAlur: '',
     boringCrossingJalan: '',
+    boringAkses: '',
     boringCrossingJalanTol: '',
     boringCrossingJembatan: '',
   },
@@ -178,17 +179,20 @@ export const INITIAL_REPORT_DATA: DailyReportFormData = {
     hh60x60: '',
     hh80x80: '',
     hh100x100: '',
+    hh110x110: '',
     hh120x120: '',
   },
   instalasiHB: {
     hb60x60: '',
     hb80x80: '',
     hb100x100: '',
+    hb110x110: '',
     hb120x120: '',
   },
   instalasiMH: {
     mh80x80: '',
     mh100x100: '',
+    mh110x110: '',
     mh120x120: '',
   },
   instalasiMB: {
@@ -200,13 +204,17 @@ export const INITIAL_REPORT_DATA: DailyReportFormData = {
     tiangBersama: '',
     galvanis2Inch: '',
     galvanis4Inch: '',
+    galvanisATB: '',
+    galvanisATBOption: 'Galv 4"',
     instalHDPE: '',
   },
   dismantling: {
     dismantleKabel: '',
     dismantleTiang: '',
   },
+  remarks: '',
   kendalaLapangan: '',
+  attachments: [],
 };
 
 // Empty initial reports as requested ("kosong seperti baru")

@@ -10,7 +10,6 @@ import {
   Share2, 
   MessageSquare, 
   Edit3, 
-  Plus, 
   Clock, 
   Phone,
   User,
@@ -32,7 +31,7 @@ interface ReportSummaryModalProps {
   report: DailyReportFormData | null;
   currentUser?: CurrentUser;
   onClose: () => void;
-  onNewReport: () => void;
+  onNewReport?: () => void;
   onEditReport?: (report: DailyReportFormData) => void;
   onDeleteReport?: (reportId: string) => void;
 }
@@ -73,6 +72,10 @@ export const ReportSummaryModal: React.FC<ReportSummaryModalProps> = ({
 
   const handleShareWA = () => {
     shareToWhatsApp(report, whatsappPhone.trim() || undefined);
+    // Otomatis menutup popup rekap dan kembali ke tampilan aplikasi formulir setelah WhatsApp dibuka
+    setTimeout(() => {
+      onClose();
+    }, 600);
   };
 
   return (
@@ -322,12 +325,37 @@ export const ReportSummaryModal: React.FC<ReportSummaryModalProps> = ({
                 <span className="text-slate-400">IV. Tiang Bersama:</span>
                 <span className="text-slate-200">{report.tiangGalvanisHDPE.tiangBersama || 0} Pcs</span>
               </div>
+              {(report.tiangGalvanisHDPE.galvanis2Inch || (report.tiangGalvanisHDPE.galvanisATB ?? report.tiangGalvanisHDPE.galvanis4Inch)) ? (
+                <div className="flex justify-between py-1 border-b border-slate-800/60">
+                  <span className="text-slate-400">   • Pipa Galvanis:</span>
+                  <span className="text-slate-200">
+                    {[
+                      report.tiangGalvanisHDPE.galvanis2Inch ? `2": ${report.tiangGalvanisHDPE.galvanis2Inch}m` : '',
+                      (report.tiangGalvanisHDPE.galvanisATB ?? report.tiangGalvanisHDPE.galvanis4Inch)
+                        ? `ATB (${report.tiangGalvanisHDPE.galvanisATBOption || 'Galv 4"'}): ${report.tiangGalvanisHDPE.galvanisATB ?? report.tiangGalvanisHDPE.galvanis4Inch}m`
+                        : '',
+                    ].filter(Boolean).join(', ')}
+                  </span>
+                </div>
+              ) : null}
               <div className="flex justify-between py-1">
                 <span className="text-slate-400">V. Dismantling Kabel:</span>
                 <span className="text-slate-200">{report.dismantling.dismantleKabel || 0} m</span>
               </div>
             </div>
           </div>
+
+          {/* Remarks Note */}
+          {report.remarks && (
+            <div className="bg-[#050b14] p-3 rounded-xl border border-purple-500/30">
+              <span className="text-[10px] uppercase font-mono-cyber text-purple-300 font-semibold block mb-1">
+                Remarks / Catatan Pekerjaan
+              </span>
+              <p className="text-xs text-slate-200 leading-relaxed whitespace-pre-wrap">
+                {report.remarks}
+              </p>
+            </div>
+          )}
 
           {/* Field Issues Note */}
           <div className="bg-[#050b14] p-3 rounded-xl border border-slate-800">
@@ -435,6 +463,9 @@ export const ReportSummaryModal: React.FC<ReportSummaryModalProps> = ({
               <MessageSquare className="w-4 h-4 text-slate-950" />
               <span>Buka & Kirim WhatsApp Sekarang</span>
             </button>
+            <p className="text-[10px] text-center text-emerald-400/80 font-mono-cyber mt-1">
+              ✓ WhatsApp akan terbuka & otomatis kembali ke tampilan aplikasi form laporan
+            </p>
           </div>
 
         </div>
@@ -476,16 +507,7 @@ export const ReportSummaryModal: React.FC<ReportSummaryModalProps> = ({
                   <span>Edit Terkunci</span>
                 </button>
               )
-            ) : (
-              <button
-                type="button"
-                onClick={onNewReport}
-                className="py-2.5 px-3 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 text-xs font-bold font-cyber flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span>Laporan Baru</span>
-              </button>
-            )}
+            ) : null}
           </div>
 
           {/* Konfirmasi Hapus Laporan dari Modal */}
@@ -525,15 +547,6 @@ export const ReportSummaryModal: React.FC<ReportSummaryModalProps> = ({
 
           <div className="flex items-center justify-between pt-1 flex-wrap gap-2">
             <div className="flex items-center gap-3">
-              <button
-                type="button"
-                onClick={onNewReport}
-                className="text-[11px] text-cyan-400 hover:text-cyan-300 font-mono-cyber flex items-center gap-1 cursor-pointer"
-              >
-                <Plus className="w-3 h-3" />
-                <span>Buat Baru</span>
-              </button>
-
               {onDeleteReport && canModify && !confirmDelete && (
                 <button
                   type="button"

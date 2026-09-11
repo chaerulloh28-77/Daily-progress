@@ -136,7 +136,7 @@ export const formatReportRecapForEmail = (report: DailyReportFormData): string =
   const boringDetails = [
     report.boring?.boringAlur ? `Boring Alur: ${report.boring.boringAlur}m` : '',
     report.boring?.boringCrossingJalan ? `Crossing Jalan: ${report.boring.boringCrossingJalan}m` : '',
-    report.boring?.boringCrossingJalanTol ? `Crossing Tol: ${report.boring.boringCrossingJalanTol}m` : '',
+    (report.boring?.boringAkses || report.boring?.boringCrossingJalanTol) ? `Boring Akses: ${report.boring?.boringAkses || report.boring?.boringCrossingJalanTol}m` : '',
     report.boring?.boringCrossingJembatan ? `Crossing Jembatan: ${report.boring.boringCrossingJembatan}m` : '',
   ].filter(Boolean).join(', ') || '-';
 
@@ -149,17 +149,30 @@ export const formatReportRecapForEmail = (report: DailyReportFormData): string =
     report.pulling?.pulling24 ? `24 Core: ${report.pulling.pulling24}m` : '',
   ].filter(Boolean).join(', ') || '-';
 
+  const atbVal = report.tiangGalvanisHDPE?.galvanisATB ?? report.tiangGalvanisHDPE?.galvanis4Inch;
+  const atbOpt = report.tiangGalvanisHDPE?.galvanisATBOption || 'Galv 4"';
   const tiangDetails = [
     report.tiangGalvanisHDPE?.tiangBersama ? `Tiang Bersama: ${report.tiangGalvanisHDPE.tiangBersama}` : '',
     report.tiangGalvanisHDPE?.galvanis2Inch ? `Galvanis 2": ${report.tiangGalvanisHDPE.galvanis2Inch}` : '',
-    report.tiangGalvanisHDPE?.galvanis4Inch ? `Galvanis 4": ${report.tiangGalvanisHDPE.galvanis4Inch}` : '',
+    atbVal ? `Galvanis ATB (${atbOpt}): ${atbVal}m` : '',
     report.tiangGalvanisHDPE?.instalHDPE ? `HDPE: ${report.tiangGalvanisHDPE.instalHDPE}m` : '',
   ].filter(Boolean).join(', ') || '-';
 
   const pitsDetails = [
+    report.instalasiHH?.hh60x60 ? `HH 60x60: ${report.instalasiHH.hh60x60}` : '',
     report.instalasiHH?.hh80x80 ? `HH 80x80: ${report.instalasiHH.hh80x80}` : '',
+    report.instalasiHH?.hh100x100 ? `HH 100x100: ${report.instalasiHH.hh100x100}` : '',
+    report.instalasiHH?.hh110x110 ? `HH 110x110: ${report.instalasiHH.hh110x110}` : '',
+    report.instalasiHH?.hh120x120 ? `HH 120x120: ${report.instalasiHH.hh120x120}` : '',
+    report.instalasiHB?.hb60x60 ? `HB 60x60: ${report.instalasiHB.hb60x60}` : '',
     report.instalasiHB?.hb80x80 ? `HB 80x80: ${report.instalasiHB.hb80x80}` : '',
+    report.instalasiHB?.hb100x100 ? `HB 100x100: ${report.instalasiHB.hb100x100}` : '',
+    report.instalasiHB?.hb110x110 ? `HB 110x110: ${report.instalasiHB.hb110x110}` : '',
+    report.instalasiHB?.hb120x120 ? `HB 120x120: ${report.instalasiHB.hb120x120}` : '',
     report.instalasiMH?.mh80x80 ? `MH 80x80: ${report.instalasiMH.mh80x80}` : '',
+    report.instalasiMH?.mh100x100 ? `MH 100x100: ${report.instalasiMH.mh100x100}` : '',
+    report.instalasiMH?.mh110x110 ? `MH 110x110: ${report.instalasiMH.mh110x110}` : '',
+    report.instalasiMH?.mh120x120 ? `MH 120x120: ${report.instalasiMH.mh120x120}` : '',
   ].filter(Boolean).join(', ') || '-';
 
   const dismantleDetails = [
@@ -202,6 +215,7 @@ export const formatReportRecapForEmail = (report: DailyReportFormData): string =
     `• Tiang & HDPE        : ${tiangDetails}`,
     `• Pits / Manhole / HH : ${pitsDetails}`,
     `• Dismantling         : ${dismantleDetails}`,
+    ...(report.remarks ? [`• Remarks              : ${report.remarks}`] : []),
     `--------------------------------------------------`,
     `⚠️ KENDALA & ISU LAPANGAN:`,
     `${report.kendalaLapangan ? `"${report.kendalaLapangan}"` : 'Tidak ada kendala lapangan.'}`,

@@ -1,5 +1,5 @@
 import React from 'react';
-import { LogOut, Cpu, FolderKanban, Eraser, ShieldCheck, UserCheck, Cloud } from 'lucide-react';
+import { LogOut, Cpu, Eraser, ShieldCheck, UserCheck, Cloud } from 'lucide-react';
 import { PmoLogo } from './PmoLogo';
 import { LinkNetLogo } from './LinkNetLogo';
 import { UserRole } from '../types';
@@ -10,7 +10,6 @@ interface ReportHeaderProps {
   onLogout: () => void;
   savedReportsCount: number;
   onOpenHistory?: () => void;
-  onOpenProjects?: () => void;
   onOpenClearScreen?: () => void;
 }
 
@@ -20,7 +19,6 @@ export const ReportHeader: React.FC<ReportHeaderProps> = ({
   onLogout,
   savedReportsCount,
   onOpenHistory,
-  onOpenProjects,
   onOpenClearScreen,
 }) => {
   const isAdmin = userRole === 'admin';
@@ -72,18 +70,6 @@ export const ReportHeader: React.FC<ReportHeaderProps> = ({
                 <Eraser className="w-3.5 h-3.5 text-amber-400 shrink-0" />
                 <span className="hidden xs:inline">Clear Screen</span>
                 <span className="xs:hidden">Clear</span>
-              </button>
-            )}
-
-            {onOpenProjects && (
-              <button
-                type="button"
-                onClick={onOpenProjects}
-                className="h-7 inline-flex items-center gap-1.5 px-2.5 rounded-lg bg-cyan-950/70 border border-cyan-500/40 text-cyan-300 hover:bg-cyan-900/70 transition-all cursor-pointer text-[11px] font-mono-cyber font-semibold"
-                title="Kelola Master Project"
-              >
-                <FolderKanban className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
-                <span>Projects</span>
               </button>
             )}
 

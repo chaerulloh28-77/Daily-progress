@@ -8,7 +8,6 @@ import {
   Clock, 
   MessageSquare, 
   Edit3, 
-  Plus, 
   Lock, 
   User, 
   Cloud, 
@@ -30,7 +29,7 @@ interface SavedReportsDrawerProps {
   onSelectReport: (report: DailyReportFormData) => void;
   onEditReport: (report: DailyReportFormData) => void;
   onDeleteReport: (reportId: string) => void;
-  onNewReport: () => void;
+  onNewReport?: () => void;
 }
 
 export const SavedReportsDrawer: React.FC<SavedReportsDrawerProps> = ({
@@ -105,20 +104,12 @@ export const SavedReportsDrawer: React.FC<SavedReportsDrawerProps> = ({
         {/* Action bar & Search */}
         <div className="p-3 bg-[#050b14] border-b border-slate-800/80 space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-mono-cyber text-slate-400">
-              CRUD & Arsip Laporan
+            <span className="text-[11px] font-mono-cyber text-slate-400 font-semibold">
+              Riwayat & Arsip Laporan
             </span>
-            <button
-              type="button"
-              onClick={() => {
-                onNewReport();
-                onClose();
-              }}
-              className="inline-flex items-center gap-1 text-[11px] font-mono-cyber text-cyan-400 hover:text-cyan-300 bg-cyan-950/60 px-2.5 py-1 rounded-lg border border-cyan-500/30 cursor-pointer hover:bg-cyan-900/40 transition-colors"
-            >
-              <Plus className="w-3 h-3" />
-              <span>+ Buat Baru</span>
-            </button>
+            <span className="text-[10px] font-mono-cyber text-slate-500">
+              Total: {reports.length} laporan
+            </span>
           </div>
 
           {/* Search Box & Area Filter */}
@@ -407,9 +398,12 @@ export const SavedReportsDrawer: React.FC<SavedReportsDrawerProps> = ({
 
                     <button
                       type="button"
-                      onClick={() => shareToWhatsApp(report)}
+                      onClick={() => {
+                        shareToWhatsApp(report);
+                        setTimeout(() => onClose(), 600);
+                      }}
                       className="py-1.5 px-1.5 rounded bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-500/40 text-emerald-300 flex items-center justify-center gap-1 text-[10px] font-semibold transition-colors cursor-pointer"
-                      title="Bagikan Laporan via WhatsApp"
+                      title="Bagikan Laporan via WhatsApp & kembali ke tampilan form"
                     >
                       <MessageSquare className="w-3 h-3 text-emerald-400" />
                       <span>Kirim WA</span>

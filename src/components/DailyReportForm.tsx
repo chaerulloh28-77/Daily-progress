@@ -32,13 +32,13 @@ import {
   Waves,
   Route,
   Footprints,
-  Wrench
+  Wrench,
+  FileText
 } from 'lucide-react';
 import { DailyReportFormData, ProjectItem, ProjectCategory, JenisPengamanan, SubJenisPerapihanAsset } from '../types';
 import { 
   WEATHER_OPTIONS, 
   AREA_OPTIONS, 
-  STANDARD_PROJECT_NAMES, 
   PROJECT_RELOKASI_GOVERNMENT, 
   PROJECT_CATEGORIES,
   JENIS_PENGAMANAN_OPTIONS,
@@ -92,8 +92,8 @@ interface DailyReportFormProps {
   formData: DailyReportFormData;
   onChange: (data: DailyReportFormData) => void;
   onSubmit: (e: React.FormEvent) => void;
-  projects: ProjectItem[];
-  onOpenProjectManagement: () => void;
+  projects?: ProjectItem[];
+  onOpenProjectManagement?: () => void;
   onOpenClearScreen?: () => void;
   isEditing?: boolean;
   onCancelEdit?: () => void;
@@ -104,7 +104,7 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
   formData,
   onChange,
   onSubmit,
-  projects,
+  projects = [],
   onOpenProjectManagement,
   onOpenClearScreen,
   isEditing,
@@ -137,22 +137,35 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
     });
   };
 
+  const handleNavigateSection = (sectionId: string, accordionKey?: string) => {
+    if (accordionKey) {
+      setOpenAccordions((prev) => ({ ...prev, [accordionKey]: true }));
+    }
+    const element = document.getElementById(sectionId);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+
   // Subtotal calculations for HH, HB, MH, MB
   const totalHH = 
     (parseFloat(formData.instalasiHH.hh60x60) || 0) +
     (parseFloat(formData.instalasiHH.hh80x80) || 0) +
     (parseFloat(formData.instalasiHH.hh100x100) || 0) +
+    (parseFloat(formData.instalasiHH.hh110x110 || '0') || 0) +
     (parseFloat(formData.instalasiHH.hh120x120) || 0);
 
   const totalHB = 
     (parseFloat(formData.instalasiHB.hb60x60) || 0) +
     (parseFloat(formData.instalasiHB.hb80x80) || 0) +
     (parseFloat(formData.instalasiHB.hb100x100) || 0) +
+    (parseFloat(formData.instalasiHB.hb110x110 || '0') || 0) +
     (parseFloat(formData.instalasiHB.hb120x120) || 0);
 
   const totalMH = 
     (parseFloat(formData.instalasiMH.mh80x80) || 0) +
     (parseFloat(formData.instalasiMH.mh100x100) || 0) +
+    (parseFloat(formData.instalasiMH.mh110x110 || '0') || 0) +
     (parseFloat(formData.instalasiMH.mh120x120) || 0);
 
   const totalMB = 
@@ -164,7 +177,7 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
   const totalBoringMeters = 
     (parseFloat(formData.boring.boringAlur) || 0) +
     (parseFloat(formData.boring.boringCrossingJalan) || 0) +
-    (parseFloat(formData.boring.boringCrossingJalanTol) || 0) +
+    (parseFloat(formData.boring.boringAkses || formData.boring.boringCrossingJalanTol || '0') || 0) +
     (parseFloat(formData.boring.boringCrossingJembatan) || 0);
 
   const totalPullingMeters = 
@@ -318,10 +331,13 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
         ...formData.boring,
         [subField]: value,
       };
+      if (subField === 'boringAkses') {
+        newBoring.boringCrossingJalanTol = value;
+      }
       const newBoringTotal =
         (parseFloat(newBoring.boringAlur) || 0) +
         (parseFloat(newBoring.boringCrossingJalan) || 0) +
-        (parseFloat(newBoring.boringCrossingJalanTol) || 0) +
+        (parseFloat(newBoring.boringAkses || newBoring.boringCrossingJalanTol || '0') || 0) +
         (parseFloat(newBoring.boringCrossingJembatan) || 0);
 
       onChange({
@@ -368,6 +384,7 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
         (parseFloat(newHH.hh60x60) || 0) +
         (parseFloat(newHH.hh80x80) || 0) +
         (parseFloat(newHH.hh100x100) || 0) +
+        (parseFloat(newHH.hh110x110 || '0') || 0) +
         (parseFloat(newHH.hh120x120) || 0);
 
       onChange({
@@ -388,6 +405,7 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
         (parseFloat(newHB.hb60x60) || 0) +
         (parseFloat(newHB.hb80x80) || 0) +
         (parseFloat(newHB.hb100x100) || 0) +
+        (parseFloat(newHB.hb110x110 || '0') || 0) +
         (parseFloat(newHB.hb120x120) || 0);
 
       onChange({
@@ -407,6 +425,7 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
       const newMHTotal =
         (parseFloat(newMH.mh80x80) || 0) +
         (parseFloat(newMH.mh100x100) || 0) +
+        (parseFloat(newMH.mh110x110 || '0') || 0) +
         (parseFloat(newMH.mh120x120) || 0);
 
       onChange({
@@ -437,6 +456,349 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
       totalProgressHB: formatTotalValue(totalHB),
       totalProgressMH: formatTotalValue(totalMH),
     });
+  };
+
+  // 1. Identitas Project & Jadwal Pelaksanaan (Card Statis di Bagian Atas)
+  const renderIdentitasProject = () => {
+    const dateDiffInfo = calculateDaysDiff(formData.reportDate, formData.startDate);
+    const isDateBeforeStart = dateDiffInfo ? dateDiffInfo.isNegative : false;
+    const isHariKeSynced = dateDiffInfo ? formData.dayNumber === dateDiffInfo.days.toString() : false;
+
+    return (
+      <div className="bg-[#091224] border border-cyan-500/30 rounded-2xl p-4 sm:p-5 mb-5 shadow-xl shadow-cyan-950/20 space-y-4">
+        <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+          <div className="flex items-center gap-2">
+            <Building2 className="w-4 h-4 text-cyan-400" />
+            <h2 className="font-cyber font-bold text-sm tracking-wide text-white uppercase">
+              Identitas Project & Jadwal Pelaksanaan
+            </h2>
+          </div>
+          <div className="flex items-center gap-2">
+            {onOpenClearScreen && (
+              <button
+                type="button"
+                onClick={onOpenClearScreen}
+                className="inline-flex items-center gap-1 text-[11px] font-mono-cyber px-2.5 py-1 rounded-lg bg-amber-950/80 text-amber-300 border border-amber-500/40 hover:bg-amber-900/80 transition-colors cursor-pointer font-semibold shadow-sm"
+                title="Bersihkan layar untuk input daily progress baru"
+              >
+                <Eraser className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                <span>Clear Screen</span>
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* 1. Input Project ID, Nama Project, Area & Nama Waspang */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+          {/* Project ID */}
+          <div>
+            <div className="flex items-center justify-between mb-1.5 h-5">
+              <label 
+                htmlFor="input-project-id" 
+                className="flex items-center gap-1.5 text-xs font-mono-cyber text-cyan-300 uppercase tracking-wider font-semibold truncate"
+              >
+                <Hash className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                <span className="truncate">Project ID</span>
+              </label>
+              {formData.projectId && (
+                <span className="text-[10px] font-mono-cyber text-cyan-300 bg-cyan-950/80 border border-cyan-500/40 px-1.5 py-0.2 rounded shrink-0">
+                  ID Aktif
+                </span>
+              )}
+            </div>
+            
+            <div className="relative">
+              <input
+                id="input-project-id"
+                type="text"
+                value={formData.projectId || ''}
+                onChange={(e) => handleTopLevelChange('projectId', e.target.value)}
+                placeholder="Contoh: PRJ-001"
+                className="w-full h-10 bg-[#050b14] border border-cyan-500/40 focus:border-cyan-400 rounded-xl px-3.5 text-xs sm:text-sm text-slate-100 font-mono-cyber focus:outline-none focus:ring-1 focus:ring-cyan-400 transition-colors"
+              />
+            </div>
+          </div>
+
+          {/* Input Nama Project Manual */}
+          <div>
+            <div className="flex items-center justify-between mb-1.5 h-5">
+              <label 
+                htmlFor="input-project-name" 
+                className="flex items-center gap-1.5 text-xs font-mono-cyber text-cyan-300 uppercase tracking-wider font-semibold truncate"
+              >
+                <Building2 className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                <span className="truncate">Nama Project <span className="text-amber-400">*</span></span>
+              </label>
+            </div>
+            
+            <div className="relative">
+              <input
+                id="input-project-name"
+                type="text"
+                required
+                value={formData.projectName}
+                onChange={(e) => handleTopLevelChange('projectName', e.target.value)}
+                placeholder="Masukkan nama project..."
+                className="w-full h-10 bg-[#050b14] border border-cyan-500/40 focus:border-cyan-400 rounded-xl px-3.5 text-xs sm:text-sm text-slate-100 font-mono-cyber focus:outline-none focus:ring-1 focus:ring-cyan-400 transition-colors"
+              />
+            </div>
+          </div>
+
+          {/* Input Area (Jabo 1, Jabo 2, Jabo 3) */}
+          <div>
+            <div className="flex items-center justify-between mb-1.5 h-5">
+              <label 
+                htmlFor="select-area" 
+                className="flex items-center gap-1.5 text-xs font-mono-cyber text-cyan-300 uppercase tracking-wider font-semibold truncate"
+              >
+                <MapPin className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                <span className="truncate">Area <span className="text-amber-400">*</span></span>
+              </label>
+              {formData.area && (
+                <span className="text-[10px] font-mono-cyber text-indigo-300 bg-indigo-950/80 border border-indigo-500/40 px-1.5 py-0.2 rounded shrink-0 font-bold">
+                  {formData.area}
+                </span>
+              )}
+            </div>
+            
+            <div className="relative flex items-center">
+              <select
+                id="select-area"
+                value={formData.area || 'Jabo 1'}
+                onChange={(e) => handleTopLevelChange('area', e.target.value)}
+                className="w-full h-10 appearance-none bg-[#050b14] border border-cyan-500/40 focus:border-cyan-400 rounded-xl px-3.5 text-xs sm:text-sm text-slate-100 font-mono-cyber font-semibold focus:outline-none focus:ring-1 focus:ring-cyan-400 pr-9 cursor-pointer transition-colors"
+              >
+                {AREA_OPTIONS.map((opt) => (
+                  <option key={opt} value={opt} className="bg-[#050b14] text-white">
+                    {opt}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="w-4 h-4 text-cyan-400 absolute right-3 pointer-events-none" />
+            </div>
+          </div>
+
+          {/* Input Nama Waspang */}
+          <div>
+            <div className="flex items-center justify-between mb-1.5 h-5">
+              <label 
+                htmlFor="input-waspang-name" 
+                className="flex items-center gap-1.5 text-xs font-mono-cyber text-cyan-300 uppercase tracking-wider font-semibold truncate"
+              >
+                <UserCheck className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                <span className="truncate">Waspang (Pengawas)</span>
+              </label>
+            </div>
+            
+            <div className="relative">
+              <input
+                id="input-waspang-name"
+                type="text"
+                value={formData.waspangName || ''}
+                onChange={(e) => handleTopLevelChange('waspangName', e.target.value)}
+                placeholder="Nama waspang / pengawas lapangan..."
+                className="w-full h-10 bg-[#050b14] border border-cyan-500/40 focus:border-cyan-400 rounded-xl px-3.5 text-xs sm:text-sm text-slate-100 font-mono-cyber focus:outline-none focus:ring-1 focus:ring-cyan-400 transition-colors"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* 2. Input Daily Perhari: Tanggal Laporan, Hari Ke-, dan Kondisi Cuaca */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+          {/* Tanggal Laporan */}
+          <div className="flex flex-col">
+            <label 
+              htmlFor="input-report-date" 
+              className="h-5 flex items-center gap-1.5 text-xs font-mono-cyber text-slate-300 uppercase tracking-wider mb-1.5"
+            >
+              <Calendar className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+              <span className="truncate">Tanggal Laporan</span>
+            </label>
+            <div className="relative flex items-center">
+              <input
+                id="input-report-date"
+                type="date"
+                value={formData.reportDate}
+                onChange={(e) => handleTopLevelChange('reportDate', e.target.value)}
+                className="w-full h-10 bg-[#050b14] border border-slate-700/80 focus:border-cyan-400 rounded-xl px-3 text-xs sm:text-sm text-slate-100 font-mono-cyber focus:outline-none focus:ring-1 focus:ring-cyan-400 transition-colors"
+              />
+            </div>
+            <span className="text-[10px] text-slate-500 mt-1 font-mono-cyber leading-tight">
+              Tanggal pelaksanaan pekerjaan
+            </span>
+          </div>
+
+          {/* Input Hari ke- (Daily Progress Counter) */}
+          <div className="flex flex-col">
+            <div className="h-5 flex items-center justify-between mb-1.5">
+              <label 
+                htmlFor="input-day-number" 
+                className="flex items-center gap-1.5 text-xs font-mono-cyber text-slate-300 uppercase tracking-wider truncate"
+              >
+                <Clock className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                <span className="truncate">Hari Ke- (Tracker)</span>
+              </label>
+              {dateDiffInfo && (
+                isHariKeSynced ? (
+                  <span 
+                    className="text-[10px] font-mono-cyber text-emerald-400 bg-emerald-950/70 border border-emerald-500/30 px-1.5 py-0.5 rounded flex items-center gap-1 shrink-0"
+                    title="Hari Ke- dihitung otomatis dari selisih Tanggal Laporan dan Start Project"
+                  >
+                    <Sparkles className="w-2.5 h-2.5" />
+                    Auto: H+{dateDiffInfo.days}
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleSyncHariKeFromDates}
+                    className="text-[10px] font-mono-cyber text-cyan-400 hover:text-cyan-300 bg-cyan-950/70 border border-cyan-500/40 px-1.5 py-0.5 rounded flex items-center gap-1 shrink-0 transition-colors cursor-pointer"
+                    title="Klik untuk sinkronkan kembali sesuai selisih tanggal laporan"
+                  >
+                    <Sparkles className="w-2.5 h-2.5" />
+                    Sinkron H+{dateDiffInfo.days}
+                  </button>
+                )
+              )}
+            </div>
+            <div className="relative flex items-center">
+              <input
+                id="input-day-number"
+                type="number"
+                min="1"
+                value={formData.dayNumber || '1'}
+                onChange={(e) => handleTopLevelChange('dayNumber', e.target.value)}
+                placeholder="1"
+                className="w-full h-10 bg-[#050b14] border border-slate-700/80 focus:border-cyan-400 rounded-xl pl-3 pr-14 text-xs sm:text-sm text-slate-100 font-mono-cyber font-bold focus:outline-none focus:ring-1 focus:ring-cyan-400 transition-colors"
+              />
+              <span className="absolute right-3 text-xs font-mono-cyber text-emerald-400/80 pointer-events-none font-semibold">
+                Hari
+              </span>
+            </div>
+            <span className="text-[10px] text-slate-400 mt-1 font-mono-cyber leading-tight">
+              {dateDiffInfo
+                ? `Otomatis: H+${dateDiffInfo.days} (Laporan - Start + 1)`
+                : `Hari kerja berjalan project`}
+            </span>
+          </div>
+
+          {/* Kondisi Cuaca */}
+          <div className="flex flex-col">
+            <label 
+              htmlFor="select-weather" 
+              className="h-5 flex items-center gap-1.5 text-xs font-mono-cyber text-slate-300 uppercase tracking-wider mb-1.5"
+            >
+              <CloudSun className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+              <span className="truncate">Kondisi Cuaca</span>
+            </label>
+            <div className="relative flex items-center">
+              <select
+                id="select-weather"
+                value={formData.weatherCondition}
+                onChange={(e) => handleTopLevelChange('weatherCondition', e.target.value)}
+                className="w-full h-10 appearance-none bg-[#050b14] border border-slate-700/80 focus:border-cyan-400 rounded-xl px-3 text-xs sm:text-sm text-slate-100 font-mono-cyber focus:outline-none focus:ring-1 focus:ring-cyan-400 pr-9 cursor-pointer transition-colors"
+              >
+                {WEATHER_OPTIONS.map((opt) => (
+                  <option key={opt} value={opt}>
+                    {opt}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3 pointer-events-none" />
+            </div>
+            <span className="text-[10px] text-slate-500 mt-1 font-mono-cyber leading-tight">
+              Kondisi lapangan hari ini
+            </span>
+          </div>
+
+          {/* Peringatan jika tanggal laporan sebelum tanggal start */}
+          {isDateBeforeStart && (
+            <div className="col-span-1 sm:col-span-3 flex items-center gap-2.5 p-3 rounded-xl bg-amber-950/40 border border-amber-500/40 text-amber-300 text-xs font-mono-cyber">
+              <AlertCircle className="w-4 h-4 text-amber-400 shrink-0" />
+              <div>
+                <strong>Peringatan Tanggal:</strong> Tanggal Laporan ({formData.reportDate}) lebih awal dari Tanggal Start Project ({formData.startDate}). Hari Ke- otomatis diset minimal 1.
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* 3. Tanggal Start Project & Durasi Pekerjaan */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-2 border-t border-slate-800/80">
+          <div className="flex flex-col">
+            <label 
+              htmlFor="input-start-date" 
+              className="h-5 flex items-center gap-1.5 text-xs font-mono-cyber text-slate-300 uppercase tracking-wider mb-1.5"
+            >
+              <Calendar className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+              <span>Tanggal Start Project</span>
+            </label>
+            <input
+              id="input-start-date"
+              type="date"
+              value={formData.startDate}
+              onChange={(e) => handleTopLevelChange('startDate', e.target.value)}
+              className="w-full h-10 bg-[#050b14] border border-slate-700/80 focus:border-cyan-400 rounded-xl px-3 text-xs sm:text-sm text-slate-100 font-mono-cyber focus:outline-none focus:ring-1 focus:ring-cyan-400 transition-colors"
+            />
+            <span className="text-[10px] text-slate-500 mt-1 font-mono-cyber leading-tight">
+              Titik awal perhitungan Hari Ke-
+            </span>
+          </div>
+
+          <div className="flex flex-col">
+            <div className="h-5 flex items-center justify-between mb-1.5">
+              <label 
+                htmlFor="input-durasi-pekerjaan" 
+                className="flex items-center gap-1.5 text-xs font-mono-cyber text-slate-300 uppercase tracking-wider"
+              >
+                <Clock className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                <span>Durasi Pekerjaan (Hari)</span>
+              </label>
+              <span className={`text-[10px] font-mono-cyber px-1.5 py-0.5 rounded border flex items-center gap-1 ${
+                isOverdue 
+                  ? 'text-red-400 bg-red-950/70 border-red-500/40' 
+                  : 'text-emerald-400/90 bg-emerald-950/70 border-emerald-500/30'
+              }`}>
+                <Lock className="w-2.5 h-2.5" />
+                <span>Otomatis (Acuan: {TOTAL_DURASI_MASTER} Hari)</span>
+              </span>
+            </div>
+            <div className="relative flex items-center">
+              <Lock className={`w-3.5 h-3.5 absolute left-3 pointer-events-none ${isOverdue ? 'text-red-400' : 'text-slate-500'}`} />
+              <input
+                id="input-durasi-pekerjaan"
+                type="number"
+                readOnly
+                disabled
+                tabIndex={-1}
+                value={formData.durasiPekerjaan ?? ''}
+                placeholder={TOTAL_DURASI_MASTER.toString()}
+                title={`Kalkulasi Otomatis: ${TOTAL_DURASI_MASTER} (Total Master) - ${hariKe} (Hari Ke-)`}
+                className={`w-full h-10 bg-[#070e1b] border rounded-xl pl-8 pr-16 text-xs sm:text-sm font-mono-cyber font-bold cursor-not-allowed select-none focus:outline-none transition-colors ${
+                  isOverdue
+                    ? 'border-red-500 text-red-400'
+                    : 'border-slate-700/80 text-emerald-300'
+                }`}
+              />
+              <span className={`absolute right-2.5 px-2 py-0.5 text-xs font-mono-cyber font-semibold rounded pointer-events-none border ${
+                isOverdue
+                  ? 'text-red-300 bg-red-950/90 border-red-500/40'
+                  : 'text-emerald-300 bg-emerald-950/90 border-emerald-500/40'
+              }`}>
+                Hari
+              </span>
+            </div>
+            <span className="text-[10px] text-slate-400 mt-1 font-mono-cyber leading-tight">
+              Sisa Durasi = {TOTAL_DURASI_MASTER} (Total Master) - {hariKe} (Hari Ke-) = <strong className={isOverdue ? 'text-red-400' : 'text-emerald-300'}>{formData.durasiPekerjaan || 0} Hari</strong> {Number(formData.durasiPekerjaan) <= 0 ? '(0 Hari tersisa)' : 'tersisa'}
+            </span>
+            {/* Notifikasi Peringatan Keterlambatan jika isOverdue bernilai true */}
+            {isOverdue && (
+              <p className="text-red-500 font-bold text-sm mt-1 flex items-center gap-1.5">
+                <span>⚠️ Peringatan: Pelaksanaan pekerjaan telah melewati batas waktu 90 hari!</span>
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
+    );
   };
 
   const handleFormSubmit = (e: React.FormEvent) => {
@@ -540,40 +902,17 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
       )}
 
       {/* ========================================================================= */}
-      {/* DAILY PROGRESS */}
+      {/* 1. IDENTITAS PROJECT & JADWAL PELAKSANAAN (CARD INFORMASI DASAR) */}
       {/* ========================================================================= */}
-      <div className="bg-[#091224] border border-cyan-500/30 rounded-2xl p-4 sm:p-5 mb-5 shadow-xl shadow-cyan-950/20 space-y-4">
-        <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-          <div className="flex items-center gap-2">
-            <Building2 className="w-4 h-4 text-cyan-400" />
-            <h2 className="font-cyber font-bold text-sm tracking-wide text-white uppercase">
-              Daily Progress
-            </h2>
-          </div>
-          <div className="flex items-center gap-2">
-            {onOpenClearScreen && (
-              <button
-                type="button"
-                onClick={onOpenClearScreen}
-                className="inline-flex items-center gap-1 text-[11px] font-mono-cyber px-2.5 py-1 rounded-lg bg-amber-950/80 text-amber-300 border border-amber-500/40 hover:bg-amber-900/80 transition-colors cursor-pointer font-semibold shadow-sm"
-                title="Bersihkan layar untuk input daily progress baru"
-              >
-                <Eraser className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                <span>Clear Screen</span>
-              </button>
-            )}
-            <button
-              type="button"
-              onClick={onOpenProjectManagement}
-              className="inline-flex items-center gap-1 text-[11px] font-mono-cyber px-2.5 py-1 rounded-lg bg-cyan-950/80 text-cyan-300 border border-cyan-500/40 hover:bg-cyan-900/80 transition-colors cursor-pointer"
-              title="Buka master data project"
-            >
-              <FolderPlus className="w-3.5 h-3.5 text-cyan-400" />
-              <span>Kelola Project ({projects.length})</span>
-            </button>
-          </div>
-        </div>
+      {renderIdentitasProject()}
 
+      {/* ========================================================================= */}
+      {/* KATEGORI PROJECT (RELOKASI GOVERMENT / PENGAMANAN) */}
+      {/* ========================================================================= */}
+      <div 
+        id="section-kategori-project" 
+        className="bg-[#091224] border border-cyan-500/30 rounded-2xl p-4 sm:p-5 mb-5 shadow-xl shadow-cyan-950/20 scroll-mt-24 transition-all space-y-4"
+      >
         {/* Pilihan Kategori Project: Relokasi Goverment atau Pengamanan */}
         <div className="bg-[#050b14]/90 p-3 sm:p-3.5 rounded-xl border border-cyan-500/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-inner">
           <div className="flex items-center gap-2.5">
@@ -790,399 +1129,13 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
             </div>
           </div>
         )}
+      </div>
 
-        {/* 1. Input Project ID, Nama Project, Area & Nama Waspang */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
-          {/* Project ID */}
-          <div>
-            <div className="flex items-center justify-between mb-1.5 h-5">
-              <label 
-                htmlFor="input-project-id" 
-                className="flex items-center gap-1.5 text-xs font-mono-cyber text-cyan-300 uppercase tracking-wider font-semibold truncate"
-              >
-                <Hash className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
-                <span className="truncate">Project ID</span>
-              </label>
-              {formData.projectId && (
-                <span className="text-[10px] font-mono-cyber text-cyan-300 bg-cyan-950/80 border border-cyan-500/40 px-1.5 py-0.2 rounded shrink-0">
-                  ID Aktif
-                </span>
-              )}
-            </div>
-            
-            <div className="relative">
-              <input
-                id="input-project-id"
-                type="text"
-                value={formData.projectId || ''}
-                onChange={(e) => handleTopLevelChange('projectId', e.target.value)}
-                placeholder="Contoh: PRJ-001"
-                className="w-full h-10 bg-[#050b14] border border-cyan-500/40 focus:border-cyan-400 rounded-xl px-3.5 text-xs sm:text-sm text-slate-100 font-mono-cyber focus:outline-none focus:ring-1 focus:ring-cyan-400 transition-colors"
-              />
-            </div>
-          </div>
-
-          {/* Input Nama Project Manual */}
-          <div>
-            <div className="flex items-center justify-between mb-1.5 h-5">
-              <label 
-                htmlFor="input-project-name" 
-                className="flex items-center gap-1.5 text-xs font-mono-cyber text-cyan-300 uppercase tracking-wider font-semibold truncate"
-              >
-                <Building2 className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
-                <span className="truncate">Nama Project <span className="text-amber-400">*</span></span>
-              </label>
-              <button
-                type="button"
-                onClick={onOpenProjectManagement}
-                className="text-[11px] font-mono-cyber text-cyan-400 hover:text-cyan-300 font-semibold cursor-pointer shrink-0"
-              >
-                + Master
-              </button>
-            </div>
-            
-            <div className="relative">
-              <input
-                id="input-project-name"
-                type="text"
-                list="project-name-suggestions"
-                required
-                value={formData.projectName}
-                onChange={(e) => handleTopLevelChange('projectName', e.target.value)}
-                placeholder="Masukkan nama project..."
-                className="w-full h-10 bg-[#050b14] border border-cyan-500/40 focus:border-cyan-400 rounded-xl px-3.5 text-xs sm:text-sm text-slate-100 font-mono-cyber focus:outline-none focus:ring-1 focus:ring-cyan-400 transition-colors"
-              />
-              <datalist id="project-name-suggestions">
-                {STANDARD_PROJECT_NAMES.map((name) => (
-                  <option key={name} value={name} />
-                ))}
-                {projects.map((p) => (
-                  <option key={p.id} value={p.name} />
-                ))}
-              </datalist>
-            </div>
-          </div>
-
-          {/* Input Area (Jabo 1, Jabo 2, Jabo 3) */}
-          <div>
-            <div className="flex items-center justify-between mb-1.5 h-5">
-              <label 
-                htmlFor="select-area" 
-                className="flex items-center gap-1.5 text-xs font-mono-cyber text-cyan-300 uppercase tracking-wider font-semibold truncate"
-              >
-                <MapPin className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
-                <span className="truncate">Area <span className="text-amber-400">*</span></span>
-              </label>
-              {formData.area && (
-                <span className="text-[10px] font-mono-cyber text-indigo-300 bg-indigo-950/80 border border-indigo-500/40 px-1.5 py-0.2 rounded shrink-0 font-bold">
-                  {formData.area}
-                </span>
-              )}
-            </div>
-            
-            <div className="relative flex items-center">
-              <select
-                id="select-area"
-                value={formData.area || 'Jabo 1'}
-                onChange={(e) => handleTopLevelChange('area', e.target.value)}
-                className="w-full h-10 appearance-none bg-[#050b14] border border-cyan-500/40 focus:border-cyan-400 rounded-xl px-3.5 text-xs sm:text-sm text-slate-100 font-mono-cyber font-semibold focus:outline-none focus:ring-1 focus:ring-cyan-400 pr-9 cursor-pointer transition-colors"
-              >
-                {AREA_OPTIONS.map((opt) => (
-                  <option key={opt} value={opt} className="bg-[#050b14] text-white">
-                    {opt}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown className="w-4 h-4 text-cyan-400 absolute right-3 pointer-events-none" />
-            </div>
-          </div>
-
-          {/* Input Nama Waspang */}
-          <div>
-            <div className="flex items-center justify-between mb-1.5 h-5">
-              <label 
-                htmlFor="input-waspang-name" 
-                className="flex items-center gap-1.5 text-xs font-mono-cyber text-cyan-300 uppercase tracking-wider font-semibold truncate"
-              >
-                <UserCheck className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
-                <span className="truncate">Waspang (Pengawas)</span>
-              </label>
-            </div>
-            
-            <div className="relative">
-              <input
-                id="input-waspang-name"
-                type="text"
-                value={formData.waspangName || ''}
-                onChange={(e) => handleTopLevelChange('waspangName', e.target.value)}
-                placeholder="Nama waspang / pengawas lapangan..."
-                className="w-full h-10 bg-[#050b14] border border-cyan-500/40 focus:border-cyan-400 rounded-xl px-3.5 text-xs sm:text-sm text-slate-100 font-mono-cyber focus:outline-none focus:ring-1 focus:ring-cyan-400 transition-colors"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Quick Picker from created projects if any */}
-        {projects.length > 0 && (
-          <div className="flex flex-wrap items-center gap-1.5 text-[11px] pt-0.5">
-            <span className="text-slate-500 font-mono-cyber">Pilih cepat project:</span>
-            {projects.map((p) => {
-              const isPengamanan = p.category === 'Pengamanan' || p.name?.toLowerCase().includes('pengamanan') || p.code?.toUpperCase().includes('PENGAMANAN');
-              const isSelected = formData.projectName === p.name;
-              return (
-                <button
-                  key={p.id}
-                  type="button"
-                  onClick={() => {
-                    // Durasi paten 90 hari
-                    const curDay = parseInt(formData.dayNumber || '1', 10);
-                    const validDay = !isNaN(curDay) && curDay >= 1 ? curDay : 1;
-                    const computedDurasi = Math.max(0, TOTAL_DURASI_MASTER - validDay).toString();
-
-                    onChange({
-                      ...formData,
-                      projectName: p.name,
-                      projectId: p.code || p.id,
-                      projectCategory: isPengamanan ? 'Pengamanan' : 'Relokasi Government',
-                      area: p.area || formData.area || 'Jabo 1',
-                      waspangName: p.pic || formData.waspangName || '',
-                      startDate: p.startDate || formData.startDate,
-                      endDate: p.endDate || formData.endDate,
-                      durasiPekerjaan: computedDurasi,
-                      totalDurasi: TOTAL_DURASI_MASTER.toString(),
-                      ...(p.targetSipil ? { totalProgressSipil: p.targetSipil } : {}),
-                      ...(p.targetKabel ? { totalProgressKabel: p.targetKabel } : {}),
-                    });
-                  }}
-                  className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-mono-cyber transition-all border cursor-pointer ${
-                    isSelected
-                      ? isPengamanan
-                        ? 'bg-amber-500 text-slate-950 border-amber-400 font-bold shadow-sm shadow-amber-500/20'
-                        : 'bg-emerald-500 text-slate-950 border-emerald-400 font-bold shadow-sm shadow-emerald-500/20'
-                      : isPengamanan
-                        ? 'bg-amber-950/60 text-amber-300 border-amber-500/50 hover:border-amber-400 hover:text-white'
-                        : 'bg-emerald-950/40 text-emerald-300 border-emerald-500/40 hover:border-emerald-400 hover:text-white'
-                  }`}
-                >
-                  {isPengamanan ? (
-                    <Shield className="w-3 h-3 text-amber-400 shrink-0" />
-                  ) : (
-                    <Building className="w-3 h-3 text-emerald-400 shrink-0" />
-                  )}
-                  <span>{p.code ? `[${p.code}] ${p.name}` : p.name}</span>
-                </button>
-              );
-            })}
-          </div>
-        )}
-
-        {(() => {
-          const dateDiffInfo = calculateDaysDiff(formData.reportDate, formData.startDate);
-          const isDateBeforeStart = dateDiffInfo ? dateDiffInfo.isNegative : false;
-          const isHariKeSynced = dateDiffInfo ? formData.dayNumber === dateDiffInfo.days.toString() : false;
-
-          return (
-            <>
-              {/* 2. Input Daily Perhari: Tanggal Laporan, Hari Ke-, dan Kondisi Cuaca */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
-                {/* Tanggal Laporan */}
-                <div className="flex flex-col">
-                  <label 
-                    htmlFor="input-report-date" 
-                    className="h-5 flex items-center gap-1.5 text-xs font-mono-cyber text-slate-300 uppercase tracking-wider mb-1.5"
-                  >
-                    <Calendar className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
-                    <span className="truncate">Tanggal Laporan</span>
-                  </label>
-                  <div className="relative flex items-center">
-                    <input
-                      id="input-report-date"
-                      type="date"
-                      value={formData.reportDate}
-                      onChange={(e) => handleTopLevelChange('reportDate', e.target.value)}
-                      className="w-full h-10 bg-[#050b14] border border-slate-700/80 focus:border-cyan-400 rounded-xl px-3 text-xs sm:text-sm text-slate-100 font-mono-cyber focus:outline-none focus:ring-1 focus:ring-cyan-400 transition-colors"
-                    />
-                  </div>
-                  <span className="text-[10px] text-slate-500 mt-1 font-mono-cyber leading-tight">
-                    Tanggal pelaksanaan pekerjaan
-                  </span>
-                </div>
-
-                {/* Input Hari ke- (Daily Progress Counter) */}
-                <div className="flex flex-col">
-                  <div className="h-5 flex items-center justify-between mb-1.5">
-                    <label 
-                      htmlFor="input-day-number" 
-                      className="flex items-center gap-1.5 text-xs font-mono-cyber text-slate-300 uppercase tracking-wider truncate"
-                    >
-                      <Clock className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                      <span className="truncate">Hari Ke- (Tracker)</span>
-                    </label>
-                    {dateDiffInfo && (
-                      isHariKeSynced ? (
-                        <span 
-                          className="text-[10px] font-mono-cyber text-emerald-400 bg-emerald-950/70 border border-emerald-500/30 px-1.5 py-0.5 rounded flex items-center gap-1 shrink-0"
-                          title="Hari Ke- dihitung otomatis dari selisih Tanggal Laporan dan Start Project"
-                        >
-                          <Sparkles className="w-2.5 h-2.5" />
-                          Auto: H+{dateDiffInfo.days}
-                        </span>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={handleSyncHariKeFromDates}
-                          className="text-[10px] font-mono-cyber text-cyan-400 hover:text-cyan-300 bg-cyan-950/70 border border-cyan-500/40 px-1.5 py-0.5 rounded flex items-center gap-1 shrink-0 transition-colors cursor-pointer"
-                          title="Klik untuk sinkronkan kembali sesuai selisih tanggal laporan"
-                        >
-                          <Sparkles className="w-2.5 h-2.5" />
-                          Sinkron H+{dateDiffInfo.days}
-                        </button>
-                      )
-                    )}
-                  </div>
-                  <div className="relative flex items-center">
-                    <input
-                      id="input-day-number"
-                      type="number"
-                      min="1"
-                      value={formData.dayNumber || '1'}
-                      onChange={(e) => handleTopLevelChange('dayNumber', e.target.value)}
-                      placeholder="1"
-                      className="w-full h-10 bg-[#050b14] border border-slate-700/80 focus:border-cyan-400 rounded-xl pl-3 pr-14 text-xs sm:text-sm text-slate-100 font-mono-cyber font-bold focus:outline-none focus:ring-1 focus:ring-cyan-400 transition-colors"
-                    />
-                    <span className="absolute right-3 text-xs font-mono-cyber text-emerald-400/80 pointer-events-none font-semibold">
-                      Hari
-                    </span>
-                  </div>
-                  <span className="text-[10px] text-slate-400 mt-1 font-mono-cyber leading-tight">
-                    {dateDiffInfo
-                      ? `Otomatis: H+${dateDiffInfo.days} (Laporan - Start + 1)`
-                      : `Hari kerja berjalan project`}
-                  </span>
-                </div>
-
-                {/* Kondisi Cuaca */}
-                <div className="flex flex-col">
-                  <label 
-                    htmlFor="select-weather" 
-                    className="h-5 flex items-center gap-1.5 text-xs font-mono-cyber text-slate-300 uppercase tracking-wider mb-1.5"
-                  >
-                    <CloudSun className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                    <span className="truncate">Kondisi Cuaca</span>
-                  </label>
-                  <div className="relative flex items-center">
-                    <select
-                      id="select-weather"
-                      value={formData.weatherCondition}
-                      onChange={(e) => handleTopLevelChange('weatherCondition', e.target.value)}
-                      className="w-full h-10 appearance-none bg-[#050b14] border border-slate-700/80 focus:border-cyan-400 rounded-xl px-3 text-xs sm:text-sm text-slate-100 font-mono-cyber focus:outline-none focus:ring-1 focus:ring-cyan-400 pr-9 cursor-pointer transition-colors"
-                    >
-                      {WEATHER_OPTIONS.map((opt) => (
-                        <option key={opt} value={opt}>
-                          {opt}
-                        </option>
-                      ))}
-                    </select>
-                    <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3 pointer-events-none" />
-                  </div>
-                  <span className="text-[10px] text-slate-500 mt-1 font-mono-cyber leading-tight">
-                    Kondisi lapangan hari ini
-                  </span>
-                </div>
-
-                {/* Peringatan jika tanggal laporan sebelum tanggal start */}
-                {isDateBeforeStart && (
-                  <div className="col-span-1 sm:col-span-3 flex items-center gap-2.5 p-3 rounded-xl bg-amber-950/40 border border-amber-500/40 text-amber-300 text-xs font-mono-cyber">
-                    <AlertCircle className="w-4 h-4 text-amber-400 shrink-0" />
-                    <div>
-                      <strong>Peringatan Tanggal:</strong> Tanggal Laporan ({formData.reportDate}) lebih awal dari Tanggal Start Project ({formData.startDate}). Hari Ke- otomatis diset minimal 1.
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* 3. Tanggal Start Project & Durasi Pekerjaan */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-2 border-t border-slate-800/80">
-                <div className="flex flex-col">
-                  <label 
-                    htmlFor="input-start-date" 
-                    className="h-5 flex items-center gap-1.5 text-xs font-mono-cyber text-slate-300 uppercase tracking-wider mb-1.5"
-                  >
-                    <Calendar className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
-                    <span>Tanggal Start Project</span>
-                  </label>
-                  <input
-                    id="input-start-date"
-                    type="date"
-                    value={formData.startDate}
-                    onChange={(e) => handleTopLevelChange('startDate', e.target.value)}
-                    className="w-full h-10 bg-[#050b14] border border-slate-700/80 focus:border-cyan-400 rounded-xl px-3 text-xs sm:text-sm text-slate-100 font-mono-cyber focus:outline-none focus:ring-1 focus:ring-cyan-400 transition-colors"
-                  />
-                  <span className="text-[10px] text-slate-500 mt-1 font-mono-cyber leading-tight">
-                    Titik awal perhitungan Hari Ke-
-                  </span>
-                </div>
-
-                <div className="flex flex-col">
-                  <div className="h-5 flex items-center justify-between mb-1.5">
-                    <label 
-                      htmlFor="input-durasi-pekerjaan" 
-                      className="flex items-center gap-1.5 text-xs font-mono-cyber text-slate-300 uppercase tracking-wider"
-                    >
-                      <Clock className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                      <span>Durasi Pekerjaan (Hari)</span>
-                    </label>
-                    <span className={`text-[10px] font-mono-cyber px-1.5 py-0.5 rounded border flex items-center gap-1 ${
-                      isOverdue 
-                        ? 'text-red-400 bg-red-950/70 border-red-500/40' 
-                        : 'text-emerald-400/90 bg-emerald-950/70 border-emerald-500/30'
-                    }`}>
-                      <Lock className="w-2.5 h-2.5" />
-                      <span>Otomatis (Acuan: {TOTAL_DURASI_MASTER} Hari)</span>
-                    </span>
-                  </div>
-                  <div className="relative flex items-center">
-                    <Lock className={`w-3.5 h-3.5 absolute left-3 pointer-events-none ${isOverdue ? 'text-red-400' : 'text-slate-500'}`} />
-                    <input
-                      id="input-durasi-pekerjaan"
-                      type="number"
-                      readOnly
-                      disabled
-                      tabIndex={-1}
-                      value={formData.durasiPekerjaan ?? ''}
-                      placeholder={TOTAL_DURASI_MASTER.toString()}
-                      title={`Kalkulasi Otomatis: ${TOTAL_DURASI_MASTER} (Total Master) - ${hariKe} (Hari Ke-)`}
-                      className={`w-full h-10 bg-[#070e1b] border rounded-xl pl-8 pr-16 text-xs sm:text-sm font-mono-cyber font-bold cursor-not-allowed select-none focus:outline-none transition-colors ${
-                        isOverdue
-                          ? 'border-red-500 text-red-400'
-                          : 'border-slate-700/80 text-emerald-300'
-                      }`}
-                    />
-                    <span className={`absolute right-2.5 px-2 py-0.5 text-xs font-mono-cyber font-semibold rounded pointer-events-none border ${
-                      isOverdue
-                        ? 'text-red-300 bg-red-950/90 border-red-500/40'
-                        : 'text-emerald-300 bg-emerald-950/90 border-emerald-500/40'
-                    }`}>
-                      Hari
-                    </span>
-                  </div>
-                  <span className="text-[10px] text-slate-400 mt-1 font-mono-cyber leading-tight">
-                    Sisa Durasi = {TOTAL_DURASI_MASTER} (Total Master) - {hariKe} (Hari Ke-) = <strong className={isOverdue ? 'text-red-400' : 'text-emerald-300'}>{formData.durasiPekerjaan || 0} Hari</strong> {Number(formData.durasiPekerjaan) <= 0 ? '(0 Hari tersisa)' : 'tersisa'}
-                  </span>
-                  {/* Notifikasi Peringatan Keterlambatan jika isOverdue bernilai true */}
-                  {isOverdue && (
-                    <p className="text-red-500 font-bold text-sm mt-1 flex items-center gap-1.5">
-                      <span>⚠️ Peringatan: Pelaksanaan pekerjaan telah melewati batas waktu 90 hari!</span>
-                    </p>
-                  )}
-                </div>
-              </div>
-            </>
-          );
-        })()}
-
-        {/* 4. Total Progress Sipil & Total Progress Kabel */}
-        <div className="pt-2 border-t border-slate-800/80">
+      {/* ========================================================================= */}
+      {/* RINGKASAN CAPAIAN HARIAN (KEY TOTALS) */}
+      {/* ========================================================================= */}
+      <div id="section-key-totals" className="bg-[#091224] border border-cyan-500/30 rounded-2xl p-4 sm:p-5 mb-5 shadow-xl shadow-cyan-950/20 scroll-mt-24 transition-all space-y-4">
+        <div className="pt-1">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2.5">
             <div>
               <span className="text-xs font-cyber uppercase tracking-wider text-slate-200 font-semibold flex items-center gap-1.5">
@@ -1428,33 +1381,31 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
       </div>
 
       {/* ========================================================================= */}
-      {/* RINCIAN PROGRES HARIAN LAPANGAN (ACCORDION) */}
+      {/* 2. RINCIAN PROGRES HARIAN LAPANGAN */}
       {/* ========================================================================= */}
-      <div className="mb-5 space-y-3">
-        <div className="flex items-center justify-between px-1">
-          <div>
-            <h2 className="text-sm font-bold font-cyber text-white uppercase tracking-wider flex items-center gap-2">
-              <Layers className="w-4 h-4 text-cyan-400" />
-              <span>Rincian Progres Harian Lapangan</span>
-            </h2>
-            <p className="text-[11px] text-slate-400">
-              Gunakan menu lipat (accordion) di bawah untuk mengisi rincian teknis
-            </p>
+      <div className="bg-[#091224] border border-cyan-500/30 rounded-2xl p-4 sm:p-5 mb-5 shadow-xl shadow-cyan-950/20 space-y-4">
+        <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+          <div className="flex items-center gap-2">
+            <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse" />
+            <h3 className="font-cyber font-bold text-sm text-white uppercase tracking-wider">
+              Rincian Progres Harian Lapangan
+            </h3>
           </div>
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={() => toggleAllAccordions(true)}
-              className="text-[10px] font-mono-cyber px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700"
+              className="text-[10px] font-mono-cyber text-cyan-400 hover:text-cyan-300 underline cursor-pointer"
             >
               Buka Semua
             </button>
+            <span className="text-slate-600">|</span>
             <button
               type="button"
               onClick={() => toggleAllAccordions(false)}
-              className="text-[10px] font-mono-cyber px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700"
+              className="text-[10px] font-mono-cyber text-slate-400 hover:text-slate-300 underline cursor-pointer"
             >
-              Tutup
+              Tutup Semua
             </button>
           </div>
         </div>
@@ -1465,7 +1416,7 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
         <AccordionSection
           id="accordion-boring"
           title="I. Pekerjaan Boring (Meter)"
-          subtitle="Boring Alur, Crossing Jalan, Tol, & Jembatan"
+          subtitle="Boring Alur, Crossing Jalan, Akses, & Jembatan"
           badge={`${totalBoringMeters} m`}
           isOpen={openAccordions.boring}
           onToggle={() => toggleAccordion('boring')}
@@ -1523,19 +1474,19 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
 
             <div className="flex flex-col">
               <label 
-                htmlFor="input-boring-crossing-tol" 
+                htmlFor="input-boring-akses" 
                 className="h-5 flex items-center text-xs font-mono-cyber text-slate-300 mb-1.5 truncate"
               >
-                Boring Crossing Jalan Tol
+                Boring Akses
               </label>
               <div className="relative flex items-center h-10">
                 <input
-                  id="input-boring-crossing-tol"
+                  id="input-boring-akses"
                   type="number"
                   step="any"
                   min="0"
-                  value={formData.boring.boringCrossingJalanTol}
-                  onChange={(e) => handleNestedChange('boring', 'boringCrossingJalanTol', e.target.value)}
+                  value={formData.boring.boringAkses ?? formData.boring.boringCrossingJalanTol ?? ''}
+                  onChange={(e) => handleNestedChange('boring', 'boringAkses', e.target.value)}
                   placeholder="0"
                   className="w-full h-10 bg-[#050b14] border border-slate-700/80 focus:border-cyan-400 rounded-xl pl-3 pr-10 text-xs sm:text-sm font-mono-cyber text-white focus:outline-none focus:ring-1 focus:ring-cyan-400 transition-colors"
                 />
@@ -1823,7 +1774,7 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
                 <div className="flex flex-col">
                   <label htmlFor="input-hh-60" className="h-4 flex items-center text-[11px] font-mono-cyber text-slate-400 mb-1">
                     HH 60x60
@@ -1867,6 +1818,20 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
                   />
                 </div>
                 <div className="flex flex-col">
+                  <label htmlFor="input-hh-110" className="h-4 flex items-center text-[11px] font-mono-cyber text-slate-400 mb-1">
+                    HH 110x110
+                  </label>
+                  <input
+                    id="input-hh-110"
+                    type="number"
+                    min="0"
+                    value={formData.instalasiHH.hh110x110 || ''}
+                    onChange={(e) => handleNestedChange('instalasiHH', 'hh110x110', e.target.value)}
+                    placeholder="0"
+                    className="w-full h-9 bg-[#091224] border border-slate-700/80 focus:border-cyan-400 rounded-lg px-2.5 text-xs font-mono-cyber text-white focus:outline-none focus:ring-1 focus:ring-cyan-400 transition-colors"
+                  />
+                </div>
+                <div className="flex flex-col">
                   <label htmlFor="input-hh-120" className="h-4 flex items-center text-[11px] font-mono-cyber text-slate-400 mb-1">
                     HH 120x120
                   </label>
@@ -1898,7 +1863,7 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
                 <div className="flex flex-col">
                   <label htmlFor="input-hb-60" className="h-4 flex items-center text-[11px] font-mono-cyber text-slate-400 mb-1">
                     HB 60x60
@@ -1942,6 +1907,20 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
                   />
                 </div>
                 <div className="flex flex-col">
+                  <label htmlFor="input-hb-110" className="h-4 flex items-center text-[11px] font-mono-cyber text-slate-400 mb-1">
+                    HB 110x110
+                  </label>
+                  <input
+                    id="input-hb-110"
+                    type="number"
+                    min="0"
+                    value={formData.instalasiHB.hb110x110 || ''}
+                    onChange={(e) => handleNestedChange('instalasiHB', 'hb110x110', e.target.value)}
+                    placeholder="0"
+                    className="w-full h-9 bg-[#091224] border border-slate-700/80 focus:border-emerald-400 rounded-lg px-2.5 text-xs font-mono-cyber text-white focus:outline-none focus:ring-1 focus:ring-emerald-400 transition-colors"
+                  />
+                </div>
+                <div className="flex flex-col">
                   <label htmlFor="input-hb-120" className="h-4 flex items-center text-[11px] font-mono-cyber text-slate-400 mb-1">
                     HB 120x120
                   </label>
@@ -1973,7 +1952,7 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
                 <div className="flex flex-col">
                   <label htmlFor="input-mh-80" className="h-4 flex items-center text-[11px] font-mono-cyber text-slate-400 mb-1">
                     MH 80x80
@@ -1998,6 +1977,20 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
                     min="0"
                     value={formData.instalasiMH.mh100x100}
                     onChange={(e) => handleNestedChange('instalasiMH', 'mh100x100', e.target.value)}
+                    placeholder="0"
+                    className="w-full h-9 bg-[#091224] border border-slate-700/80 focus:border-amber-400 rounded-lg px-2.5 text-xs font-mono-cyber text-white focus:outline-none focus:ring-1 focus:ring-amber-400 transition-colors"
+                  />
+                </div>
+                <div className="flex flex-col">
+                  <label htmlFor="input-mh-110" className="h-4 flex items-center text-[11px] font-mono-cyber text-slate-400 mb-1">
+                    MH 110x110
+                  </label>
+                  <input
+                    id="input-mh-110"
+                    type="number"
+                    min="0"
+                    value={formData.instalasiMH.mh110x110 || ''}
+                    onChange={(e) => handleNestedChange('instalasiMH', 'mh110x110', e.target.value)}
                     placeholder="0"
                     className="w-full h-9 bg-[#091224] border border-slate-700/80 focus:border-amber-400 rounded-lg px-2.5 text-xs font-mono-cyber text-white focus:outline-none focus:ring-1 focus:ring-amber-400 transition-colors"
                   />
@@ -2089,7 +2082,7 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
         <AccordionSection
           id="accordion-tiang-hdpe"
           title="IV. Tiang, Galvanis & HDPE"
-          subtitle="Tiang Bersama (Pcs), Galvanis 2 & 4 inch, HDPE (m)"
+          subtitle="Tiang Bersama (Pcs), Galvanis 2 inch & ATB (4/6 inch), HDPE (m)"
           badge={formData.tiangGalvanisHDPE.tiangBersama ? `${formData.tiangGalvanisHDPE.tiangBersama} Pcs` : ''}
           isOpen={openAccordions.tiangHdpe}
           onToggle={() => toggleAccordion('tiangHdpe')}
@@ -2145,20 +2138,51 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
             </div>
 
             <div className="flex flex-col">
-              <label 
-                htmlFor="input-galvanis-4" 
-                className="h-5 flex items-center text-xs font-mono-cyber text-slate-300 mb-1.5 truncate"
-              >
-                Galvanis 4"
-              </label>
+              <div className="h-5 flex items-center justify-between mb-1.5">
+                <label 
+                  htmlFor="input-galvanis-atb" 
+                  className="text-xs font-mono-cyber text-slate-300 truncate"
+                >
+                  Galvanis ATB
+                </label>
+                <div className="flex items-center gap-1 bg-[#050b14] p-0.5 rounded-lg border border-slate-800">
+                  <button
+                    type="button"
+                    onClick={() => handleNestedChange('tiangGalvanisHDPE', 'galvanisATBOption', 'Galv 4"')}
+                    className={`px-2 py-0.5 rounded text-[10px] font-mono-cyber font-semibold transition-all cursor-pointer ${
+                      (formData.tiangGalvanisHDPE.galvanisATBOption || 'Galv 4"') === 'Galv 4"'
+                        ? 'bg-blue-500 text-slate-950 shadow-xs'
+                        : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+                    }`}
+                    title="Opsi Galvanis ATB 4 inch"
+                  >
+                    Galv 4"
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleNestedChange('tiangGalvanisHDPE', 'galvanisATBOption', 'Galv 6"')}
+                    className={`px-2 py-0.5 rounded text-[10px] font-mono-cyber font-semibold transition-all cursor-pointer ${
+                      formData.tiangGalvanisHDPE.galvanisATBOption === 'Galv 6"'
+                        ? 'bg-blue-500 text-slate-950 shadow-xs'
+                        : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+                    }`}
+                    title="Opsi Galvanis ATB 6 inch"
+                  >
+                    Galv 6"
+                  </button>
+                </div>
+              </div>
               <div className="relative flex items-center h-10">
                 <input
-                  id="input-galvanis-4"
+                  id="input-galvanis-atb"
                   type="number"
                   step="any"
                   min="0"
-                  value={formData.tiangGalvanisHDPE.galvanis4Inch}
-                  onChange={(e) => handleNestedChange('tiangGalvanisHDPE', 'galvanis4Inch', e.target.value)}
+                  value={formData.tiangGalvanisHDPE.galvanisATB !== undefined && formData.tiangGalvanisHDPE.galvanisATB !== '' ? formData.tiangGalvanisHDPE.galvanisATB : (formData.tiangGalvanisHDPE.galvanis4Inch || '')}
+                  onChange={(e) => {
+                    handleNestedChange('tiangGalvanisHDPE', 'galvanisATB', e.target.value);
+                    handleNestedChange('tiangGalvanisHDPE', 'galvanis4Inch', e.target.value);
+                  }}
                   placeholder="0"
                   className="w-full h-10 bg-[#050b14] border border-slate-700/80 focus:border-blue-400 rounded-xl pl-3 pr-10 text-xs sm:text-sm font-mono-cyber text-white focus:outline-none focus:ring-1 focus:ring-blue-400 transition-colors"
                 />
@@ -2259,26 +2283,79 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
       </div>
 
       {/* ========================================================================= */}
+      {/* REMARKS (CATATAN KHUSUS LAPANGAN) */}
+      {/* ========================================================================= */}
+      <div id="section-remarks" className="bg-[#091224] border border-purple-500/35 rounded-2xl p-4 sm:p-5 mb-5 shadow-xl shadow-purple-950/20 scroll-mt-24 transition-all space-y-4">
+        <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+          <div className="flex items-center gap-2">
+            <FileText className="w-4 h-4 text-purple-400" />
+            <h3 className="font-cyber font-bold text-sm text-white uppercase tracking-wider">
+              Remarks
+            </h3>
+          </div>
+          <span className="text-[10px] font-mono-cyber text-purple-300 bg-purple-950/80 px-2 py-0.5 rounded border border-purple-500/30 font-medium">
+            Catatan Khusus Lapangan
+          </span>
+        </div>
+        
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-800">
+          <div className="text-xs font-mono-cyber text-slate-400">Template Cepat:</div>
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <button
+              type="button"
+              onClick={() => handleTopLevelChange('remarks', 'Pekerjaan harian berjalan normal sesuai jadwal.')}
+              className="text-[10px] font-mono-cyber px-2 py-1 rounded-lg bg-purple-950/60 border border-purple-500/40 text-purple-300 hover:bg-purple-900/60 transition-colors cursor-pointer"
+            >
+              + 'Normal sesuai jadwal'
+            </button>
+            <button
+              type="button"
+              onClick={() => handleTopLevelChange('remarks', 'Progress dilanjutkan besok pagi sesuai koordinasi waspang.')}
+              className="text-[10px] font-mono-cyber px-2 py-1 rounded-lg bg-slate-800/80 border border-slate-700 text-slate-300 hover:text-white hover:bg-slate-700 transition-colors cursor-pointer"
+            >
+              + 'Lanjut besok'
+            </button>
+          </div>
+        </div>
+
+        <div>
+          <textarea
+            id="input-remarks"
+            rows={3}
+            value={formData.remarks || ''}
+            onChange={(e) => handleTopLevelChange('remarks', e.target.value)}
+            placeholder="Tuliskan catatan khusus, remarks teknis, metode pelaksanaan, atau detail tambahan pekerjaan lapangan..."
+            className="w-full bg-[#050b14] border border-slate-700/80 focus:border-purple-400 rounded-xl p-3 text-xs sm:text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-purple-400 transition-colors leading-relaxed"
+          />
+        </div>
+      </div>
+
+      {/* ========================================================================= */}
       {/* CATATAN AKHIR: KENDALA / ISU LAPANGAN */}
       {/* ========================================================================= */}
-      <div className="bg-[#091224] border border-cyan-500/30 rounded-2xl p-4 sm:p-5 mb-8 shadow-xl shadow-cyan-950/20">
-        <div className="flex items-center justify-between pb-3 border-b border-slate-800 mb-3">
+      <div id="section-kendala-lapangan" className="bg-[#091224] border border-cyan-500/30 rounded-2xl p-4 sm:p-5 mb-8 shadow-xl shadow-cyan-950/20 scroll-mt-24 transition-all space-y-4">
+        <div className="flex items-center justify-between pb-3 border-b border-slate-800">
           <div className="flex items-center gap-2">
             <AlertCircle className="w-4 h-4 text-amber-400" />
-            <h3 className="font-cyber font-bold text-sm text-white uppercase tracking-wide">
+            <h3 className="font-cyber font-bold text-sm text-white uppercase tracking-wider">
               Catatan Akhir: Kendala / Isu Lapangan
             </h3>
           </div>
           <button
             type="button"
             onClick={() => handleTopLevelChange('kendalaLapangan', 'Tidak ada kendala')}
-            className="text-[10px] font-mono-cyber px-2 py-0.5 rounded bg-emerald-950/60 border border-emerald-500/40 text-emerald-300 hover:bg-emerald-900/60"
+            className="text-[10px] font-mono-cyber px-2.5 py-1 rounded-lg bg-emerald-950/70 border border-emerald-500/40 text-emerald-300 hover:bg-emerald-900/70 cursor-pointer font-medium"
           >
             + Set 'Tidak ada kendala'
           </button>
         </div>
+        
+        <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+          <span className="text-xs font-mono-cyber text-slate-400">Isu & Hambatan Teknis</span>
+        </div>
         <div>
           <textarea
+            id="input-kendala-lapangan"
             rows={3}
             value={formData.kendalaLapangan}
             onChange={(e) => handleTopLevelChange('kendalaLapangan', e.target.value)}

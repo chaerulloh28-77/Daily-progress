@@ -130,13 +130,20 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
             </div>
           </div>
 
-          {/* Mobile App Icon */}
+          {/* Mobile App Icon - Clickable & Operable */}
           <div className="flex justify-center mb-3">
-            <div className="relative p-1 rounded-2xl bg-gradient-to-b from-cyan-500/40 via-cyan-500/10 to-transparent border border-cyan-500/40 shadow-xl shadow-cyan-500/20">
+            <button
+              type="button"
+              onClick={() => {
+                window.dispatchEvent(new CustomEvent('open-gov-install-modal'));
+              }}
+              className="relative p-1 rounded-2xl bg-gradient-to-b from-cyan-500/40 via-cyan-500/10 to-transparent border border-cyan-500/40 hover:border-cyan-300 shadow-xl shadow-cyan-500/20 group cursor-pointer active:scale-95 transition-all"
+              title="Ketuk untuk Pasang Icon di Layar Utama HP"
+            >
               <img
                 src="/icon.svg"
                 alt="Icon Aplikasi GovMonitor"
-                className="w-13 h-13 sm:w-15 sm:h-15 rounded-xl object-contain bg-[#050b14] shadow-md"
+                className="w-13 h-13 sm:w-15 sm:h-15 rounded-xl object-contain bg-[#050b14] shadow-md group-hover:scale-105 transition-transform"
               />
               <span className="absolute -bottom-1 -right-1 flex h-4 w-4">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75" />
@@ -144,7 +151,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
                   ⚡
                 </span>
               </span>
-            </div>
+            </button>
           </div>
 
           {/* Symmetrical Dual Brand Logos (LinkNet on Left, PMO MS CKT on Right) */}

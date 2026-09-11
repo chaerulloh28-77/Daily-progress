@@ -14,7 +14,10 @@ import {
   Cloud, 
   Paperclip,
   Search,
-  Filter
+  Filter,
+  ArrowLeft,
+  Shield,
+  Building
 } from 'lucide-react';
 import { DailyReportFormData, CurrentUser } from '../types';
 import { shareToWhatsApp, calculateTotals } from '../utils/whatsapp';
@@ -50,6 +53,7 @@ export const SavedReportsDrawer: React.FC<SavedReportsDrawerProps> = ({
       const matchQuery = !q || 
         (r.projectName && r.projectName.toLowerCase().includes(q)) ||
         (r.projectId && r.projectId.toLowerCase().includes(q)) ||
+        (r.jenisPengamanan && r.jenisPengamanan.toLowerCase().includes(q)) ||
         (r.waspangName && r.waspangName.toLowerCase().includes(q)) ||
         (r.reportDate && r.reportDate.toLowerCase().includes(q)) ||
         (r.authorEmail && r.authorEmail.toLowerCase().includes(q)) ||
@@ -71,19 +75,30 @@ export const SavedReportsDrawer: React.FC<SavedReportsDrawerProps> = ({
     <div className="fixed inset-0 z-50 flex justify-end bg-black/70 backdrop-blur-xs animate-fadeIn">
       <div className="w-full max-w-sm sm:max-w-md h-full bg-[#080f1e] border-l border-cyan-500/30 flex flex-col shadow-2xl">
         {/* Drawer Header */}
-        <div className="p-4 border-b border-slate-800 flex items-center justify-between bg-[#060c18]">
+        <div className="p-3.5 sm:p-4 border-b border-slate-800 flex items-center justify-between bg-[#060c18]">
           <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="p-1 -ml-1 rounded-lg text-slate-400 hover:text-cyan-300 hover:bg-slate-800 transition-colors cursor-pointer flex items-center gap-1 active:scale-95"
+              title="Kembali ke formulir laporan"
+            >
+              <ArrowLeft className="w-4 h-4 text-cyan-400" />
+              <span className="text-xs font-cyber text-slate-200">Kembali</span>
+            </button>
+            <div className="h-4 w-px bg-slate-700 mx-0.5" />
             <Clock className="w-4 h-4 text-cyan-400" />
-            <h3 className="font-cyber font-bold text-sm text-white uppercase tracking-wider">
-              Riwayat Laporan ({reports.length})
+            <h3 className="font-cyber font-bold text-xs sm:text-sm text-white uppercase tracking-wider truncate">
+              Riwayat ({reports.length})
             </h3>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="p-1 rounded text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+            className="p-1.5 rounded text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+            title="Tutup Riwayat"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
 
@@ -177,9 +192,25 @@ export const SavedReportsDrawer: React.FC<SavedReportsDrawerProps> = ({
                             ID: {report.projectId}
                           </span>
                         )}
+                        {(report.projectCategory === 'Pengamanan' || report.projectName?.toLowerCase().includes('pengamanan')) ? (
+                          <span className="text-[9px] font-mono-cyber px-1.5 py-0.2 rounded bg-amber-950/90 border border-amber-500/50 text-amber-300 font-semibold flex items-center gap-0.5">
+                            <Shield className="w-2.5 h-2.5 text-amber-400" />
+                            <span>Pengamanan</span>
+                          </span>
+                        ) : (
+                          <span className="text-[9px] font-mono-cyber px-1.5 py-0.2 rounded bg-emerald-950/90 border border-emerald-500/50 text-emerald-300 font-semibold flex items-center gap-0.5">
+                            <Building className="w-2.5 h-2.5 text-emerald-400" />
+                            <span>Relokasi Gov</span>
+                          </span>
+                        )}
                         <span className="font-cyber font-bold text-white text-xs">
                           {report.projectName || 'Project Tanpa Nama'}
                         </span>
+                        {report.jenisPengamanan && (
+                          <span className="text-[9px] font-mono-cyber px-1.5 py-0.2 rounded bg-amber-950/80 border border-amber-500/50 text-amber-300 font-semibold">
+                            {report.jenisPengamanan}
+                          </span>
+                        )}
                         {report.area && (
                           <span className="text-[10px] font-mono-cyber px-1.5 py-0.2 rounded bg-indigo-950 border border-indigo-500/40 text-indigo-300 font-semibold">
                             {report.area}

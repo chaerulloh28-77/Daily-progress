@@ -23,10 +23,27 @@ import {
   Hash,
   Eraser,
   Lock,
-  MapPin
+  MapPin,
+  ArrowLeft,
+  Shield,
+  Building,
+  Construction,
+  GitMerge,
+  Waves,
+  Route,
+  Footprints,
+  Wrench
 } from 'lucide-react';
-import { DailyReportFormData, ProjectItem } from '../types';
-import { WEATHER_OPTIONS, AREA_OPTIONS } from '../data';
+import { DailyReportFormData, ProjectItem, ProjectCategory, JenisPengamanan, SubJenisPerapihanAsset } from '../types';
+import { 
+  WEATHER_OPTIONS, 
+  AREA_OPTIONS, 
+  STANDARD_PROJECT_NAMES, 
+  PROJECT_RELOKASI_GOVERNMENT, 
+  PROJECT_CATEGORIES,
+  JENIS_PENGAMANAN_OPTIONS,
+  SUB_JENIS_PERAPIHAN_ASSET_OPTIONS
+} from '../data';
 import { AccordionSection } from './AccordionSection';
 
 /**
@@ -495,9 +512,11 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
               <button
                 type="button"
                 onClick={onCancelEdit}
-                className="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-300 hover:text-white text-[11px] font-cyber cursor-pointer transition-colors"
+                className="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-300 hover:text-white text-[11px] font-cyber cursor-pointer transition-colors flex items-center gap-1.5 active:scale-95"
+                title="Kembali ke formulir laporan baru"
               >
-                Batal Edit
+                <ArrowLeft className="w-3.5 h-3.5 text-cyan-400" />
+                <span>Kembali</span>
               </button>
             )}
 
@@ -555,6 +574,223 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
           </div>
         </div>
 
+        {/* Pilihan Kategori Project: Relokasi Goverment atau Pengamanan */}
+        <div className="bg-[#050b14]/90 p-3 sm:p-3.5 rounded-xl border border-cyan-500/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-inner">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-cyan-950/80 border border-cyan-500/40 flex items-center justify-center shrink-0">
+              <Layers className="w-4 h-4 text-cyan-400" />
+            </div>
+            <div>
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs font-mono-cyber text-slate-100 font-bold uppercase tracking-wider">
+                  Kategori Project <span className="text-amber-400">*</span>
+                </span>
+                <span className="text-[10px] font-mono-cyber px-1.5 py-0.2 rounded bg-cyan-950 border border-cyan-500/40 text-cyan-300">
+                  {formData.projectCategory || 'Relokasi Government'}
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-400 font-mono-cyber mt-0.5">
+                Pilih opsi klasifikasi project: Relokasi Goverment atau Pengamanan
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2 w-full sm:w-auto shrink-0">
+            <button
+              type="button"
+              onClick={() => {
+                onChange({
+                  ...formData,
+                  projectCategory: 'Relokasi Government',
+                });
+              }}
+              className={`inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl border text-xs font-mono-cyber font-bold transition-all cursor-pointer ${
+                formData.projectCategory === 'Relokasi Government' || !formData.projectCategory
+                  ? 'bg-emerald-950 border-emerald-400 text-emerald-300 shadow-md shadow-emerald-500/20 ring-1 ring-emerald-400/60'
+                  : 'bg-[#091224] border-slate-700 text-slate-400 hover:text-white hover:border-slate-600'
+              }`}
+            >
+              <Building className="w-4 h-4 text-emerald-400 shrink-0" />
+              <span>Relokasi Goverment</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                onChange({
+                  ...formData,
+                  projectCategory: 'Pengamanan',
+                  ...(formData.projectName?.trim().toLowerCase() === 'pengamanan' ? { projectName: '' } : {}),
+                });
+              }}
+              className={`inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl border text-xs font-mono-cyber font-bold transition-all cursor-pointer ${
+                formData.projectCategory === 'Pengamanan'
+                  ? 'bg-amber-950 border-amber-400 text-amber-300 shadow-md shadow-amber-500/20 ring-1 ring-amber-400/60'
+                  : 'bg-[#091224] border-slate-700 text-slate-400 hover:text-white hover:border-slate-600'
+              }`}
+            >
+              <Shield className="w-4 h-4 text-amber-400 shrink-0" />
+              <span>Pengamanan</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Panel Opsi Jenis Pengamanan (Muncul saat Kategori = Pengamanan) */}
+        {formData.projectCategory === 'Pengamanan' && (
+          <div className="p-4 rounded-2xl bg-gradient-to-br from-[#0c1424] to-[#080d19] border border-amber-500/50 shadow-xl shadow-amber-950/20 space-y-4 animate-fadeIn">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2.5 border-b border-amber-500/20">
+              <div className="flex items-center gap-2.5">
+                <div className="w-7 h-7 rounded-lg bg-amber-500/20 border border-amber-400/60 flex items-center justify-center shrink-0">
+                  <Shield className="w-4 h-4 text-amber-400" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-cyber font-bold text-amber-300 uppercase tracking-wider flex items-center gap-2">
+                    <span>Opsi Jenis Pengamanan</span>
+                    {formData.jenisPengamanan && (
+                      <span className="text-[10px] font-mono-cyber px-2 py-0.5 rounded bg-amber-950/90 border border-amber-400 text-amber-200 font-bold">
+                        {formData.jenisPengamanan}
+                      </span>
+                    )}
+                  </h4>
+                  <p className="text-[11px] text-slate-400 font-mono-cyber mt-0.5">
+                    Pilih jenis pekerjaan pengamanan utilitas jaringan yang dilaksanakan
+                  </p>
+                </div>
+              </div>
+              <span className="text-[10px] font-mono-cyber text-amber-400/90 bg-amber-950/60 px-2 py-0.5 rounded border border-amber-500/30 self-start sm:self-center">
+                Wajib / Rekomendasi
+              </span>
+            </div>
+
+            {/* Grid 6 Pilihan Jenis Pengamanan */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+              {JENIS_PENGAMANAN_OPTIONS.map((opt) => {
+                const isSelected = formData.jenisPengamanan === opt.id;
+                return (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    onClick={() => {
+                      const willBeSelected = isSelected ? '' : opt.id;
+                      onChange({
+                        ...formData,
+                        jenisPengamanan: willBeSelected,
+                      });
+                    }}
+                    className={`flex items-start gap-2.5 p-3 rounded-xl border text-left transition-all cursor-pointer group ${
+                      isSelected
+                        ? 'bg-amber-950/80 border-amber-400 text-white shadow-lg shadow-amber-500/20 ring-1 ring-amber-400/60'
+                        : 'bg-[#060b16] border-slate-700/80 hover:border-amber-500/50 hover:bg-[#0a1222] text-slate-300'
+                    }`}
+                  >
+                    <div
+                      className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-colors ${
+                        isSelected
+                          ? 'bg-amber-400 text-slate-950 font-bold shadow'
+                          : 'bg-slate-800/80 text-amber-400 group-hover:bg-amber-950/60'
+                      }`}
+                    >
+                      {opt.id === 'Pembangunan Uditch' && <Construction className="w-4 h-4" />}
+                      {opt.id === 'Pembangunan Jembatan/JPO' && <GitMerge className="w-4 h-4" />}
+                      {opt.id === 'Pembangunan Bantalan Kali/Sungai' && <Waves className="w-4 h-4" />}
+                      {opt.id === 'Pelebaran Jalan' && <Route className="w-4 h-4" />}
+                      {opt.id === 'Pembangunan Trotoar' && <Footprints className="w-4 h-4" />}
+                      {opt.id === 'Perapihan Asset' && <Wrench className="w-4 h-4" />}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-1">
+                        <span className={`text-xs font-cyber font-bold ${isSelected ? 'text-amber-200' : 'text-slate-200 group-hover:text-amber-300'}`}>
+                          {opt.label}
+                        </span>
+                        {isSelected && (
+                          <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse shrink-0" />
+                        )}
+                      </div>
+                      <p className="text-[10px] text-slate-400 font-mono-cyber mt-0.5 leading-snug">
+                        {opt.desc}
+                      </p>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Sub-Pilihan Rincian Perapihan Asset */}
+            {(formData.jenisPengamanan === 'Perapihan Asset' || (formData.subJenisPerapihanAsset && formData.subJenisPerapihanAsset.length > 0)) && (
+              <div className="p-3.5 rounded-xl bg-[#060c1a] border border-amber-500/40 space-y-2.5 animate-fadeIn">
+                <div className="flex items-center justify-between flex-wrap gap-1">
+                  <span className="text-xs font-cyber font-bold text-amber-300 flex items-center gap-1.5">
+                    <Wrench className="w-3.5 h-3.5 text-amber-400" />
+                    <span>Rincian Pekerjaan Perapihan Asset:</span>
+                  </span>
+                  <span className="text-[10px] font-mono-cyber text-slate-400">
+                    Bisa dipilih lebih dari satu
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  {SUB_JENIS_PERAPIHAN_ASSET_OPTIONS.map((sub) => {
+                    const currentSubs = formData.subJenisPerapihanAsset || [];
+                    const isChecked = currentSubs.includes(sub.id);
+                    return (
+                      <button
+                        key={sub.id}
+                        type="button"
+                        onClick={() => {
+                          const updatedSubs = isChecked
+                            ? currentSubs.filter((item) => item !== sub.id)
+                            : [...currentSubs, sub.id];
+                          onChange({
+                            ...formData,
+                            jenisPengamanan: 'Perapihan Asset',
+                            subJenisPerapihanAsset: updatedSubs,
+                          });
+                        }}
+                        className={`flex items-center gap-2 p-2.5 rounded-lg border text-left transition-all cursor-pointer ${
+                          isChecked
+                            ? 'bg-amber-950/90 border-amber-400 text-amber-100 font-semibold shadow-sm'
+                            : 'bg-[#050a14] border-slate-700/70 hover:border-amber-500/40 text-slate-400 hover:text-slate-200'
+                        }`}
+                      >
+                        <div
+                          className={`w-4 h-4 rounded flex items-center justify-center shrink-0 border ${
+                            isChecked
+                              ? 'bg-amber-400 border-amber-400 text-slate-950'
+                              : 'border-slate-600 bg-slate-900'
+                          }`}
+                        >
+                          {isChecked && <Check className="w-3 h-3 stroke-[3]" />}
+                        </div>
+                        <span className="text-xs font-mono-cyber leading-tight">
+                          {sub.label}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Catatan / Keterangan Tambahan Jenis Pengamanan */}
+            <div className="pt-1">
+              <label 
+                htmlFor="input-keterangan-pengamanan"
+                className="block text-[11px] font-mono-cyber text-slate-400 mb-1"
+              >
+                Catatan / Lokasi Titik Pengamanan (Opsional):
+              </label>
+              <input
+                id="input-keterangan-pengamanan"
+                type="text"
+                value={formData.keteranganPengamanan || ''}
+                onChange={(e) => handleTopLevelChange('keteranganPengamanan', e.target.value)}
+                placeholder="Misal: Segmen Jl. Margonda Km 4, koordinasi dengan pihak Dinas PUPR/Bina Marga..."
+                className="w-full h-9 bg-[#050b14] border border-amber-500/30 focus:border-amber-400 rounded-xl px-3 text-xs text-slate-100 font-mono-cyber focus:outline-none focus:ring-1 focus:ring-amber-400 transition-colors"
+              />
+            </div>
+          </div>
+        )}
+
         {/* 1. Input Project ID, Nama Project, Area & Nama Waspang */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
           {/* Project ID */}
@@ -599,7 +835,7 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
               <button
                 type="button"
                 onClick={onOpenProjectManagement}
-                className="text-[11px] font-mono-cyber text-cyan-400 hover:text-cyan-300 font-semibold cursor-pointer shrink-0 ml-1"
+                className="text-[11px] font-mono-cyber text-cyan-400 hover:text-cyan-300 font-semibold cursor-pointer shrink-0"
               >
                 + Master
               </button>
@@ -609,12 +845,21 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
               <input
                 id="input-project-name"
                 type="text"
+                list="project-name-suggestions"
                 required
                 value={formData.projectName}
                 onChange={(e) => handleTopLevelChange('projectName', e.target.value)}
-                placeholder="Ketik nama project secara manual..."
+                placeholder="Masukkan nama project..."
                 className="w-full h-10 bg-[#050b14] border border-cyan-500/40 focus:border-cyan-400 rounded-xl px-3.5 text-xs sm:text-sm text-slate-100 font-mono-cyber focus:outline-none focus:ring-1 focus:ring-cyan-400 transition-colors"
               />
+              <datalist id="project-name-suggestions">
+                {STANDARD_PROJECT_NAMES.map((name) => (
+                  <option key={name} value={name} />
+                ))}
+                {projects.map((p) => (
+                  <option key={p.id} value={p.name} />
+                ))}
+              </datalist>
             </div>
           </div>
 
@@ -681,37 +926,53 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
         {projects.length > 0 && (
           <div className="flex flex-wrap items-center gap-1.5 text-[11px] pt-0.5">
             <span className="text-slate-500 font-mono-cyber">Pilih cepat project:</span>
-            {projects.map((p) => (
-              <button
-                key={p.id}
-                type="button"
-                onClick={() => {
-                  // Durasi paten 90 hari
-                  const curDay = parseInt(formData.dayNumber || '1', 10);
-                  const validDay = !isNaN(curDay) && curDay >= 1 ? curDay : 1;
-                  const computedDurasi = Math.max(0, TOTAL_DURASI_MASTER - validDay).toString();
+            {projects.map((p) => {
+              const isPengamanan = p.category === 'Pengamanan' || p.name?.toLowerCase().includes('pengamanan') || p.code?.toUpperCase().includes('PENGAMANAN');
+              const isSelected = formData.projectName === p.name;
+              return (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => {
+                    // Durasi paten 90 hari
+                    const curDay = parseInt(formData.dayNumber || '1', 10);
+                    const validDay = !isNaN(curDay) && curDay >= 1 ? curDay : 1;
+                    const computedDurasi = Math.max(0, TOTAL_DURASI_MASTER - validDay).toString();
 
-                  onChange({
-                    ...formData,
-                    projectName: p.name,
-                    projectId: p.code || p.id,
-                    area: p.area || formData.area || 'Jabo 1',
-                    waspangName: p.pic || formData.waspangName || '',
-                    startDate: p.startDate || formData.startDate,
-                    endDate: p.endDate || formData.endDate,
-                    durasiPekerjaan: computedDurasi,
-                    totalDurasi: TOTAL_DURASI_MASTER.toString(),
-                  });
-                }}
-                className={`px-2.5 py-1 rounded-lg text-[11px] font-mono-cyber transition-all border cursor-pointer ${
-                  formData.projectName === p.name
-                    ? 'bg-cyan-500 text-slate-950 border-cyan-400 font-bold'
-                    : 'bg-slate-800/90 text-slate-300 border-slate-700 hover:border-cyan-500/50 hover:text-white'
-                }`}
-              >
-                {p.code ? `[${p.code}] ${p.name}` : p.name}
-              </button>
-            ))}
+                    onChange({
+                      ...formData,
+                      projectName: p.name,
+                      projectId: p.code || p.id,
+                      projectCategory: isPengamanan ? 'Pengamanan' : 'Relokasi Government',
+                      area: p.area || formData.area || 'Jabo 1',
+                      waspangName: p.pic || formData.waspangName || '',
+                      startDate: p.startDate || formData.startDate,
+                      endDate: p.endDate || formData.endDate,
+                      durasiPekerjaan: computedDurasi,
+                      totalDurasi: TOTAL_DURASI_MASTER.toString(),
+                      ...(p.targetSipil ? { totalProgressSipil: p.targetSipil } : {}),
+                      ...(p.targetKabel ? { totalProgressKabel: p.targetKabel } : {}),
+                    });
+                  }}
+                  className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-mono-cyber transition-all border cursor-pointer ${
+                    isSelected
+                      ? isPengamanan
+                        ? 'bg-amber-500 text-slate-950 border-amber-400 font-bold shadow-sm shadow-amber-500/20'
+                        : 'bg-emerald-500 text-slate-950 border-emerald-400 font-bold shadow-sm shadow-emerald-500/20'
+                      : isPengamanan
+                        ? 'bg-amber-950/60 text-amber-300 border-amber-500/50 hover:border-amber-400 hover:text-white'
+                        : 'bg-emerald-950/40 text-emerald-300 border-emerald-500/40 hover:border-emerald-400 hover:text-white'
+                  }`}
+                >
+                  {isPengamanan ? (
+                    <Shield className="w-3 h-3 text-amber-400 shrink-0" />
+                  ) : (
+                    <Building className="w-3 h-3 text-emerald-400 shrink-0" />
+                  )}
+                  <span>{p.code ? `[${p.code}] ${p.name}` : p.name}</span>
+                </button>
+              );
+            })}
           </div>
         )}
 
@@ -2036,9 +2297,11 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
             <button
               type="button"
               onClick={onCancelEdit}
-              className="py-2.5 px-3.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-cyber text-xs border border-slate-700 active:scale-95 transition-all cursor-pointer shrink-0"
+              className="py-2.5 px-3.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-cyber text-xs border border-slate-700 active:scale-95 transition-all cursor-pointer shrink-0 flex items-center gap-1.5 shadow-sm"
+              title="Kembali ke formulir laporan baru"
             >
-              Batal
+              <ArrowLeft className="w-3.5 h-3.5 text-cyan-400" />
+              <span>Kembali</span>
             </button>
           )}
 

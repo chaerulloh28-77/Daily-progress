@@ -8,7 +8,8 @@ import {
   ArrowRight, 
   Building2, 
   Calendar,
-  Layers
+  Layers,
+  ArrowLeft
 } from 'lucide-react';
 
 interface ClearScreenModalProps {
@@ -46,32 +47,43 @@ export const ClearScreenModal: React.FC<ClearScreenModalProps> = ({
         className="relative w-full max-w-lg bg-[#091224] border border-cyan-500/40 rounded-2xl shadow-2xl shadow-black/90 overflow-hidden my-auto flex flex-col"
       >
         {/* Header with Cyber Gradient Accent */}
-        <div className="relative px-5 py-4 border-b border-slate-800 bg-[#060c18] flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-amber-500/15 border border-amber-500/40 flex items-center justify-center text-amber-400 shadow-sm shadow-amber-500/20">
-              <Eraser className="w-5 h-5" />
+        <div className="relative px-4 sm:px-5 py-3.5 sm:py-4 border-b border-slate-800 bg-[#060c18] flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <button
+              type="button"
+              onClick={onClose}
+              className="p-1 -ml-1 rounded-lg text-slate-400 hover:text-cyan-300 hover:bg-slate-800 transition-colors cursor-pointer flex items-center gap-1 active:scale-95"
+              title="Kembali ke formulir laporan"
+            >
+              <ArrowLeft className="w-4 h-4 text-cyan-400" />
+              <span className="text-xs font-cyber text-slate-200">Kembali</span>
+            </button>
+            <div className="h-4 w-px bg-slate-700 mx-0.5" />
+            <div className="w-8 h-8 rounded-xl bg-amber-500/15 border border-amber-500/40 flex items-center justify-center text-amber-400 shadow-sm shadow-amber-500/20 shrink-0">
+              <Eraser className="w-4 h-4" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="font-cyber font-bold text-sm sm:text-base text-white tracking-wide">
+                <h3 className="font-cyber font-bold text-xs sm:text-sm text-white tracking-wide">
                   Clear Screen
                 </h3>
-                <span className="px-1.5 py-0.5 rounded text-[10px] font-mono-cyber font-semibold bg-cyan-950 border border-cyan-500/40 text-cyan-300">
+                <span className="px-1.5 py-0.2 rounded text-[9px] font-mono-cyber font-semibold bg-cyan-950 border border-cyan-500/40 text-cyan-300">
                   Form Reset
                 </span>
               </div>
-              <p className="text-[11px] text-slate-400 font-mono-cyber">
-                Pilih opsi pembersihan layar untuk membuat daily progress baru
+              <p className="text-[10px] text-slate-400 font-mono-cyber">
+                Pilih opsi pembersihan layar untuk daily progress baru
               </p>
             </div>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="w-8 h-8 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center transition-colors cursor-pointer border border-slate-700"
+            className="w-7 h-7 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center transition-colors cursor-pointer border border-slate-700"
             aria-label="Tutup"
+            title="Tutup Modal"
           >
-            <X className="w-4 h-4" />
+            <X className="w-3.5 h-3.5" />
           </button>
         </div>
 

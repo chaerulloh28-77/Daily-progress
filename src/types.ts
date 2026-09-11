@@ -1,8 +1,26 @@
 export type AreaOption = 'Jabo 1' | 'Jabo 2' | 'Jabo 3';
 
+export type ProjectCategory = 'Relokasi Government' | 'Pengamanan';
+
+export type JenisPengamanan =
+  | 'Pembangunan Uditch'
+  | 'Pembangunan Jembatan/JPO'
+  | 'Pembangunan Bantalan Kali/Sungai'
+  | 'Pelebaran Jalan'
+  | 'Pembangunan Trotoar'
+  | 'Perapihan Asset';
+
+export type SubJenisPerapihanAsset =
+  | 'Perapihan Kabel Areal/Underground'
+  | 'Tanam/Geser/Cabut Tiang'
+  | 'Perapihan HH';
+
 export interface ProjectItem {
   id: string;
   name: string;
+  category?: ProjectCategory;
+  jenisPengamanan?: JenisPengamanan | string;
+  subJenisPerapihanAsset?: SubJenisPerapihanAsset[] | string[];
   code?: string;
   location?: string;
   area?: string;
@@ -106,6 +124,10 @@ export interface DailyReportFormData {
   id?: string;
   projectName: string;
   projectId?: string;
+  projectCategory?: ProjectCategory;
+  jenisPengamanan?: JenisPengamanan | string;
+  subJenisPerapihanAsset?: SubJenisPerapihanAsset[] | string[];
+  keteranganPengamanan?: string;
   area?: string;
   waspangName?: string;
   dayNumber?: string;

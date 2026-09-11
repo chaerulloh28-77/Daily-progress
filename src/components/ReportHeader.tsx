@@ -32,12 +32,20 @@ export const ReportHeader: React.FC<ReportHeaderProps> = ({
         <div className="flex items-center justify-between gap-2 pb-2 mb-2 border-b border-slate-800/80 text-[11px] font-mono-cyber">
           {/* Dual Brand Logos: LinkNet (Left) + PMO MS CKT (Right) + App Icon */}
           <div className="flex items-center gap-2">
-            <img
-              src="/icon.svg"
-              alt="Icon Aplikasi GovMonitor"
-              className="w-5 h-5 rounded-md object-contain border border-cyan-500/40 bg-[#050b14] shadow-[0_0_8px_rgba(6,182,212,0.4)] shrink-0"
-              title="GovMonitor Mobile App Icon"
-            />
+            <button
+              type="button"
+              onClick={() => {
+                window.dispatchEvent(new CustomEvent('open-gov-install-modal'));
+              }}
+              className="group p-0.5 rounded-md hover:bg-cyan-950/60 border border-cyan-500/40 hover:border-cyan-300 bg-[#050b14] shadow-[0_0_8px_rgba(6,182,212,0.4)] shrink-0 transition-all cursor-pointer active:scale-95"
+              title="Ketuk Icon GovMonitor (Info & Pemasangan di Layar Utama HP)"
+            >
+              <img
+                src="/icon.svg"
+                alt="Icon Aplikasi GovMonitor"
+                className="w-5 h-5 rounded object-contain group-hover:scale-105 transition-transform"
+              />
+            </button>
 
             <div className="flex items-center px-1.5 py-0.5 rounded-md bg-[#0a1222] border border-amber-500/30 shadow-sm">
               <LinkNetLogo className="h-3.5 sm:h-4 w-auto" />

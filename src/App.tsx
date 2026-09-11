@@ -8,7 +8,7 @@ import { ProjectManagementModal } from './components/ProjectManagementModal';
 import { ClearScreenModal } from './components/ClearScreenModal';
 import { MobileInstallBanner } from './components/MobileInstallBanner';
 import { DailyReportFormData, ProjectItem, CurrentUser, UserRole } from './types';
-import { INITIAL_REPORT_DATA } from './data';
+import { INITIAL_REPORT_DATA, ACTIVE_PROJECTS, PROJECT_RELOKASI_GOVERNMENT } from './data';
 import { CheckCircle } from 'lucide-react';
 import { 
   sendLoginNotification, 
@@ -42,17 +42,23 @@ export default function App() {
     };
   });
 
-  // Master projects list: starts empty as requested
+  // Master projects list
   const [projects, setProjects] = useState<ProjectItem[]>(() => {
     const saved = localStorage.getItem('gov_network_projects');
     if (saved) {
       try {
-        return JSON.parse(saved);
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          // Bersihkan project bawaan bernama 'Pengamanan'
+          return parsed.filter(
+            (p: ProjectItem) => p.id !== 'PRJ-PENGAMANAN' && p.name.trim().toLowerCase() !== 'pengamanan'
+          );
+        }
       } catch {
         // fallback
       }
     }
-    return [];
+    return ACTIVE_PROJECTS;
   });
 
   // Current active form data
@@ -60,7 +66,14 @@ export default function App() {
     const saved = localStorage.getItem('gov_current_draft');
     if (saved) {
       try {
-        return JSON.parse(saved);
+        const parsed = JSON.parse(saved);
+        if (parsed) {
+          // Jika draft sebelumnya terisi 'Pengamanan' karena auto-fill, kosongkan nama project
+          if (parsed.projectName && parsed.projectName.trim().toLowerCase() === 'pengamanan') {
+            parsed.projectName = '';
+          }
+          return parsed;
+        }
       } catch {
         // fallback
       }
@@ -123,7 +136,20 @@ export default function App() {
 
     const unsubProjects = subscribeToProjects((cloudProjects) => {
       if (cloudProjects && cloudProjects.length > 0) {
-        setProjects(cloudProjects);
+        // Hapus project 'PRJ-PENGAMANAN' atau project bernama 'Pengamanan' jika tersimpan di cloud
+        const pengamananItem = cloudProjects.find(
+          (p) => p.id === 'PRJ-PENGAMANAN' || p.name.trim().toLowerCase() === 'pengamanan'
+        );
+        if (pengamananItem) {
+          deleteProjectFromCloud(pengamananItem.id).catch(console.warn);
+        }
+
+        const filtered = cloudProjects.filter(
+          (p) => p.id !== 'PRJ-PENGAMANAN' && p.name.trim().toLowerCase() !== 'pengamanan'
+        );
+        setProjects(filtered);
+      } else {
+        setProjects(ACTIVE_PROJECTS);
       }
     });
 
@@ -302,6 +328,9 @@ export default function App() {
       ...prev,
       projectName: project.name,
       projectId: project.code || project.id,
+      projectCategory: project.category || prev.projectCategory || 'Relokasi Government',
+      jenisPengamanan: project.jenisPengamanan || (project.category === 'Pengamanan' ? prev.jenisPengamanan : ''),
+      subJenisPerapihanAsset: project.subJenisPerapihanAsset || (project.category === 'Pengamanan' ? prev.subJenisPerapihanAsset : []),
       area: project.area || prev.area || 'Jabo 1',
       waspangName: project.pic || prev.waspangName || '',
       startDate: project.startDate || prev.startDate,

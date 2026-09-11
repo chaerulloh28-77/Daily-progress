@@ -35,6 +35,12 @@ export function generateWhatsAppReportText(report: DailyReportFormData): string 
     `━━━━━━━━━━━━━━━━━━━━`,
     ...(report.projectId ? [`🆔 *Project ID:* ${report.projectId}`] : []),
     `📌 *Nama Project:* ${report.projectName || 'Project Jaringan'}`,
+    ...(report.projectCategory ? [`🏷️ *Kategori Project:* ${report.projectCategory}`] : []),
+    ...(report.jenisPengamanan ? [`🛡️ *Jenis Pengamanan:* ${report.jenisPengamanan}`] : []),
+    ...(report.subJenisPerapihanAsset && report.subJenisPerapihanAsset.length > 0
+      ? [`   • *Rincian Perapihan:* ${report.subJenisPerapihanAsset.join(', ')}`]
+      : []),
+    ...(report.keteranganPengamanan ? [`   • *Catatan Pengamanan:* ${report.keteranganPengamanan}`] : []),
     ...(report.area ? [`📍 *Area:* ${report.area}`] : []),
     ...(report.waspangName ? [`👷 *Waspang (Pengawas):* ${report.waspangName}`] : []),
     `📅 *Tanggal:* ${report.reportDate}${dayInfo}`,

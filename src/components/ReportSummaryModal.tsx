@@ -20,7 +20,10 @@ import {
   FileText,
   Image as ImageIcon,
   ExternalLink,
-  Trash2
+  Trash2,
+  ArrowLeft,
+  Building,
+  Shield
 } from 'lucide-react';
 import { DailyReportFormData, CurrentUser } from '../types';
 import { calculateTotals, shareToWhatsApp, generateWhatsAppReportText } from '../utils/whatsapp';
@@ -80,16 +83,26 @@ export const ReportSummaryModal: React.FC<ReportSummaryModalProps> = ({
         <div className="h-1.5 w-full bg-gradient-to-r from-emerald-400 via-cyan-400 to-amber-400 shrink-0" />
 
         {/* Modal Header */}
-        <div className="p-4 sm:p-5 pb-3 flex items-start justify-between shrink-0 bg-[#070e1c] border-b border-slate-800">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-emerald-500/20 border border-emerald-400 flex items-center justify-center text-emerald-400 shrink-0">
-              <CheckCircle className="w-6 h-6" />
+        <div className="p-3.5 sm:p-4 pb-3 flex items-center justify-between shrink-0 bg-[#070e1c] border-b border-slate-800">
+          <div className="flex items-center gap-2.5">
+            <button
+              type="button"
+              onClick={onClose}
+              className="p-1 -ml-1 rounded-lg text-slate-400 hover:text-cyan-300 hover:bg-slate-800 transition-colors cursor-pointer flex items-center gap-1 active:scale-95"
+              title="Kembali ke formulir laporan"
+            >
+              <ArrowLeft className="w-4 h-4 text-cyan-400" />
+              <span className="text-xs font-cyber text-slate-200">Kembali</span>
+            </button>
+            <div className="h-4 w-px bg-slate-700 mx-0.5" />
+            <div className="w-8 h-8 rounded-full bg-emerald-500/20 border border-emerald-400 flex items-center justify-center text-emerald-400 shrink-0">
+              <CheckCircle className="w-4 h-4" />
             </div>
             <div>
-              <span className="text-[11px] font-mono-cyber uppercase tracking-wider text-emerald-400 font-semibold">
+              <span className="text-[10px] font-mono-cyber uppercase tracking-wider text-emerald-400 font-semibold block leading-none">
                 LAPORAN TERSIMPAN
               </span>
-              <h2 className="text-base font-bold font-cyber text-white">
+              <h2 className="text-xs sm:text-sm font-bold font-cyber text-white truncate mt-0.5">
                 Rekap Progress Harian
               </h2>
             </div>
@@ -97,9 +110,10 @@ export const ReportSummaryModal: React.FC<ReportSummaryModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+            title="Tutup Modal"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
 
@@ -114,6 +128,44 @@ export const ReportSummaryModal: React.FC<ReportSummaryModalProps> = ({
                 <span className="font-mono-cyber font-bold text-cyan-400 bg-cyan-950/70 border border-cyan-500/30 px-1.5 py-0.5 rounded">
                   {report.projectId}
                 </span>
+              </div>
+            )}
+
+            <div className="flex items-center justify-between text-slate-300 pb-1 border-b border-slate-800/60">
+              <span className="text-slate-400 font-mono-cyber">Kategori Project:</span>
+              <span className="font-mono-cyber font-bold text-xs">
+                {(report.projectCategory === 'Pengamanan' || report.projectName?.toLowerCase().includes('pengamanan')) ? (
+                  <span className="text-amber-300 bg-amber-950/80 border border-amber-500/50 px-2 py-0.5 rounded-full flex items-center gap-1">
+                    <Shield className="w-3 h-3 text-amber-400" />
+                    <span>Pengamanan</span>
+                  </span>
+                ) : (
+                  <span className="text-emerald-300 bg-emerald-950/80 border border-emerald-500/50 px-2 py-0.5 rounded-full flex items-center gap-1">
+                    <Building className="w-3 h-3 text-emerald-400" />
+                    <span>Relokasi Goverment</span>
+                  </span>
+                )}
+              </span>
+            </div>
+
+            {report.jenisPengamanan && (
+              <div className="flex items-start justify-between text-slate-300 pb-1 border-b border-slate-800/60 gap-2">
+                <span className="text-slate-400 font-mono-cyber shrink-0">Jenis Pengamanan:</span>
+                <div className="text-right">
+                  <span className="text-amber-300 bg-amber-950/90 border border-amber-500/50 px-2 py-0.5 rounded text-xs font-cyber font-bold inline-block">
+                    {report.jenisPengamanan}
+                  </span>
+                  {report.subJenisPerapihanAsset && report.subJenisPerapihanAsset.length > 0 && (
+                    <div className="text-[10px] text-amber-400/90 font-mono-cyber mt-0.5">
+                      {report.subJenisPerapihanAsset.join(' • ')}
+                    </div>
+                  )}
+                  {report.keteranganPengamanan && (
+                    <div className="text-[10px] text-slate-400 font-mono-cyber italic mt-0.5 max-w-[200px] line-clamp-2">
+                      &ldquo;{report.keteranganPengamanan}&rdquo;
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 
@@ -498,9 +550,11 @@ export const ReportSummaryModal: React.FC<ReportSummaryModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="text-[11px] text-slate-400 hover:text-slate-200 py-1 font-mono-cyber cursor-pointer"
+              className="text-xs text-slate-300 hover:text-cyan-300 py-1 font-mono-cyber cursor-pointer flex items-center gap-1.5 transition-colors active:scale-95"
+              title="Kembali ke formulir laporan"
             >
-              Tutup Pratinjau
+              <ArrowLeft className="w-3.5 h-3.5 text-cyan-400" />
+              <span>Kembali</span>
             </button>
           </div>
         </div>

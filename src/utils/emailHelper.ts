@@ -175,6 +175,12 @@ export const formatReportRecapForEmail = (report: DailyReportFormData): string =
   return [
     ...(report.projectId ? [`🆔 PROJECT ID        : ${report.projectId}`] : []),
     `📌 NAMA PROJECT       : ${report.projectName || 'Project Jaringan'}`,
+    ...(report.projectCategory ? [`🏷️ KATEGORI PROJECT  : ${report.projectCategory}`] : []),
+    ...(report.jenisPengamanan ? [`🛡️ JENIS PENGAMANAN  : ${report.jenisPengamanan}`] : []),
+    ...(report.subJenisPerapihanAsset && report.subJenisPerapihanAsset.length > 0
+      ? [`   • Rincian Perapihan : ${report.subJenisPerapihanAsset.join(', ')}`]
+      : []),
+    ...(report.keteranganPengamanan ? [`   • Catatan Pengamanan: ${report.keteranganPengamanan}`] : []),
     `👷 WASPANG / PENGAWAS : ${report.waspangName || 'Belum diisi'}`,
     `📅 TANGGAL LAPORAN    : ${report.reportDate} (Hari ke-${report.dayNumber || '1'})`,
     `🌦️ KONDISI CUACA      : ${report.weatherCondition || 'Normal'}`,

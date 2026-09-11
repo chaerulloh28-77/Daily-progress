@@ -1,7 +1,120 @@
-import { DailyReportFormData, ProjectItem, AreaOption } from './types';
+import { DailyReportFormData, ProjectItem, AreaOption, ProjectCategory, JenisPengamanan, SubJenisPerapihanAsset } from './types';
 
-// Empty initial projects as requested ("hapus semua data project dan kosong seperti baru")
-export const ACTIVE_PROJECTS: ProjectItem[] = [];
+export const PROJECT_CATEGORIES: ProjectCategory[] = [
+  'Relokasi Government',
+  'Pengamanan',
+];
+
+export const JENIS_PENGAMANAN_OPTIONS: {
+  id: JenisPengamanan;
+  label: string;
+  desc: string;
+}[] = [
+  {
+    id: 'Pembangunan Uditch',
+    label: 'Pembangunan Uditch',
+    desc: 'Saluran drainase & crossing u-ditch',
+  },
+  {
+    id: 'Pembangunan Jembatan/JPO',
+    label: 'Pembangunan Jembatan/JPO',
+    desc: 'Jalur kabel jembatan & penyeberangan orang',
+  },
+  {
+    id: 'Pembangunan Bantalan Kali/Sungai',
+    label: 'Pembangunan Bantalan Kali/Sungai',
+    desc: 'Proteksi tanggul tebing kali & crossing air',
+  },
+  {
+    id: 'Pelebaran Jalan',
+    label: 'Pelebaran Jalan',
+    desc: 'Pengamanan jalur utilitas akibat pelebaran jalan',
+  },
+  {
+    id: 'Pembangunan Trotoar',
+    label: 'Pembangunan Trotoar',
+    desc: 'Penataan jalur pedestrian & ducting trotoar',
+  },
+  {
+    id: 'Perapihan Asset',
+    label: 'Perapihan Asset',
+    desc: 'Kabel areal/underground, tiang, dan handhole',
+  },
+];
+
+export const SUB_JENIS_PERAPIHAN_ASSET_OPTIONS: {
+  id: SubJenisPerapihanAsset;
+  label: string;
+}[] = [
+  {
+    id: 'Perapihan Kabel Areal/Underground',
+    label: 'Perapihan Kabel Areal / Underground',
+  },
+  {
+    id: 'Tanam/Geser/Cabut Tiang',
+    label: 'Tanam / Geser / Cabut Tiang',
+  },
+  {
+    id: 'Perapihan HH',
+    label: 'Perapihan HH (Handhole)',
+  },
+];
+
+// Master data project awal - Relokasi Government & Pengamanan
+export const PROJECT_RELOKASI_GOVERNMENT: ProjectItem = {
+  id: 'PRJ-RELOKASI-GOV',
+  name: 'Relokasi Government',
+  category: 'Relokasi Government',
+  code: 'PRJ-REL-GOV',
+  location: 'Jalur Relokasi Fasilitas Pemerintah (Jabodetabek)',
+  area: 'Jabo 1',
+  startDate: '2026-09-01',
+  endDate: '2026-11-30',
+  durasiPekerjaan: '90',
+  totalDurasi: '90',
+  targetSipil: '1000',
+  targetKabel: '2000',
+  targetKabelCoax: '0',
+  targetHH: '10',
+  targetHB: '10',
+  targetMH: '5',
+  pic: 'Waspang Relokasi Gov',
+  createdAt: '2026-09-10',
+};
+
+export const PROJECT_PENGAMANAN: ProjectItem = {
+  id: 'PRJ-PENGAMANAN',
+  name: 'Pengamanan',
+  category: 'Pengamanan',
+  code: 'PRJ-PENGAMANAN',
+  location: 'Jalur FO LinkNet (Jabodetabek)',
+  area: 'Jabo 1',
+  startDate: '2026-09-01',
+  endDate: '2026-11-30',
+  durasiPekerjaan: '90',
+  totalDurasi: '90',
+  targetSipil: '1000',
+  targetKabel: '2000',
+  targetKabelCoax: '0',
+  targetHH: '10',
+  targetHB: '10',
+  targetMH: '5',
+  pic: 'Waspang Pengamanan',
+  createdAt: '2026-09-10',
+};
+
+export const ACTIVE_PROJECTS: ProjectItem[] = [
+  PROJECT_RELOKASI_GOVERNMENT,
+];
+
+// Opsi nama project standar / template cepat
+export const STANDARD_PROJECT_NAMES: string[] = [
+  'Relokasi Government',
+  'Relokasi Goverment FO',
+  'Pengamanan Jaringan FO',
+  'Pengamanan Jalur Utilitas',
+  'Pengamanan LinkNet',
+];
 
 export const AREA_OPTIONS: AreaOption[] = [
   'Jabo 1',
@@ -20,6 +133,10 @@ export const WEATHER_OPTIONS = [
 export const INITIAL_REPORT_DATA: DailyReportFormData = {
   projectName: '',
   projectId: '',
+  projectCategory: 'Relokasi Government',
+  jenisPengamanan: '',
+  subJenisPerapihanAsset: [],
+  keteranganPengamanan: '',
   area: 'Jabo 1',
   waspangName: '',
   dayNumber: '1',

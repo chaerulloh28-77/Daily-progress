@@ -14,9 +14,19 @@ import {
   ArrowRight,
   User,
   Layers,
-  Clock
+  Clock,
+  ArrowLeft,
+  Shield,
+  Building,
+  Construction,
+  GitMerge,
+  Waves,
+  Route,
+  Footprints,
+  Wrench
 } from 'lucide-react';
-import { ProjectItem } from '../types';
+import { ProjectItem, ProjectCategory, JenisPengamanan, SubJenisPerapihanAsset } from '../types';
+import { PROJECT_RELOKASI_GOVERNMENT, JENIS_PENGAMANAN_OPTIONS, SUB_JENIS_PERAPIHAN_ASSET_OPTIONS } from '../data';
 
 interface ProjectManagementModalProps {
   isOpen: boolean;
@@ -42,6 +52,9 @@ export const ProjectManagementModal: React.FC<ProjectManagementModalProps> = ({
 
   // Form fields
   const [name, setName] = useState('');
+  const [category, setCategory] = useState<ProjectCategory>('Relokasi Government');
+  const [jenisPengamanan, setJenisPengamanan] = useState<string>('');
+  const [subJenisPerapihanAsset, setSubJenisPerapihanAsset] = useState<string[]>([]);
   const [code, setCode] = useState('');
   const [location, setLocation] = useState('');
   const [area, setArea] = useState<string>('Jabo 1');
@@ -60,6 +73,9 @@ export const ProjectManagementModal: React.FC<ProjectManagementModalProps> = ({
 
   const resetForm = () => {
     setName('');
+    setCategory('Relokasi Government');
+    setJenisPengamanan('');
+    setSubJenisPerapihanAsset([]);
     setCode('');
     setLocation('');
     setArea('Jabo 1');
@@ -79,8 +95,47 @@ export const ProjectManagementModal: React.FC<ProjectManagementModalProps> = ({
     setIsFormOpen(true);
   };
 
+  const handleApplyRelokasiTemplate = () => {
+    setName(PROJECT_RELOKASI_GOVERNMENT.name);
+    setCategory('Relokasi Government');
+    setJenisPengamanan('');
+    setSubJenisPerapihanAsset([]);
+    setCode(PROJECT_RELOKASI_GOVERNMENT.code || 'PRJ-REL-GOV');
+    setLocation(PROJECT_RELOKASI_GOVERNMENT.location || 'Jalur Relokasi Fasilitas Pemerintah');
+    setArea(PROJECT_RELOKASI_GOVERNMENT.area || 'Jabo 1');
+    setStartDate(PROJECT_RELOKASI_GOVERNMENT.startDate || '2026-09-01');
+    setEndDate(PROJECT_RELOKASI_GOVERNMENT.endDate || '2026-11-30');
+    setDurasiPekerjaan(PROJECT_RELOKASI_GOVERNMENT.durasiPekerjaan || '90');
+    setTargetSipil(PROJECT_RELOKASI_GOVERNMENT.targetSipil || '1000');
+    setTargetKabel(PROJECT_RELOKASI_GOVERNMENT.targetKabel || '2000');
+    setPic(PROJECT_RELOKASI_GOVERNMENT.pic || 'Pengawas Relokasi');
+    setError(null);
+  };
+
+  const handleQuickAddRelokasi = () => {
+    const existing = projects.find(
+      (p) => p.name.toLowerCase().includes('relokasi') || p.code === 'PRJ-REL-GOV' || p.category === 'Relokasi Government'
+    );
+    if (existing) {
+      onSelectProjectForForm(existing);
+      onClose();
+      return;
+    }
+    onAddProject(PROJECT_RELOKASI_GOVERNMENT);
+    onSelectProjectForForm(PROJECT_RELOKASI_GOVERNMENT);
+    onClose();
+  };
+
   const handleStartEdit = (proj: ProjectItem) => {
     setName(proj.name || '');
+    const determinedCategory =
+      proj.category ||
+      (proj.name.toLowerCase().includes('pengamanan') || proj.code?.toUpperCase().includes('PENGAMANAN')
+        ? 'Pengamanan'
+        : 'Relokasi Government');
+    setCategory(determinedCategory);
+    setJenisPengamanan(proj.jenisPengamanan || '');
+    setSubJenisPerapihanAsset(proj.subJenisPerapihanAsset ? [...proj.subJenisPerapihanAsset] : []);
     setCode(proj.code || '');
     setLocation(proj.location || '');
     setArea(proj.area || 'Jabo 1');
@@ -107,6 +162,9 @@ export const ProjectManagementModal: React.FC<ProjectManagementModalProps> = ({
       const updated: ProjectItem = {
         id: editingProjectId,
         name: name.trim(),
+        category,
+        jenisPengamanan: category === 'Pengamanan' ? jenisPengamanan : undefined,
+        subJenisPerapihanAsset: category === 'Pengamanan' ? subJenisPerapihanAsset : undefined,
         code: code.trim() || undefined,
         location: location.trim() || undefined,
         area: area || 'Jabo 1',
@@ -124,6 +182,9 @@ export const ProjectManagementModal: React.FC<ProjectManagementModalProps> = ({
       const newProject: ProjectItem = {
         id: 'PRJ-' + Date.now().toString(36).toUpperCase(),
         name: name.trim(),
+        category,
+        jenisPengamanan: category === 'Pengamanan' ? jenisPengamanan : undefined,
+        subJenisPerapihanAsset: category === 'Pengamanan' ? subJenisPerapihanAsset : undefined,
         code: code.trim() || `PRJ-${Math.floor(100 + Math.random() * 900)}`,
         location: location.trim() || undefined,
         area: area || 'Jabo 1',
@@ -155,16 +216,26 @@ export const ProjectManagementModal: React.FC<ProjectManagementModalProps> = ({
         <div className="h-1 w-full bg-gradient-to-r from-cyan-400 via-blue-500 to-emerald-400" />
 
         {/* Modal Header */}
-        <div className="p-4 sm:p-5 pb-3 border-b border-slate-800 flex items-center justify-between shrink-0 bg-[#070e1c]">
+        <div className="p-3.5 sm:p-4 pb-3 border-b border-slate-800 flex items-center justify-between shrink-0 bg-[#070e1c]">
           <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-cyan-950/80 border border-cyan-500/40 text-cyan-400">
-              <Building2 className="w-5 h-5" />
+            <button
+              type="button"
+              onClick={onClose}
+              className="p-1 -ml-1 rounded-lg text-slate-400 hover:text-cyan-300 hover:bg-slate-800 transition-colors cursor-pointer flex items-center gap-1 active:scale-95"
+              title="Kembali ke formulir laporan"
+            >
+              <ArrowLeft className="w-4 h-4 text-cyan-400" />
+              <span className="text-xs font-cyber text-slate-200">Kembali</span>
+            </button>
+            <div className="h-4 w-px bg-slate-700 mx-0.5" />
+            <div className="p-1.5 rounded-xl bg-cyan-950/80 border border-cyan-500/40 text-cyan-400">
+              <Building2 className="w-4 h-4" />
             </div>
             <div>
-              <h2 className="text-base font-bold font-cyber text-white tracking-wide">
+              <h2 className="text-xs sm:text-sm font-bold font-cyber text-white tracking-wide">
                 Kelola Data Project
               </h2>
-              <p className="text-[11px] text-slate-400 font-mono-cyber">
+              <p className="text-[10px] text-slate-400 font-mono-cyber">
                 CRUD Manajemen Project Jaringan Lapangan
               </p>
             </div>
@@ -172,29 +243,41 @@ export const ProjectManagementModal: React.FC<ProjectManagementModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+            title="Tutup Modal"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* Main Content Area */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4">
           
-          {/* Subheader button: Tambah Project Baru */}
+          {/* Subheader button: Tambah Project Baru, Relokasi Gov & Project Pengamanan */}
           {!isFormOpen && (
-            <div className="flex items-center justify-between gap-2">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <span className="text-xs font-mono-cyber text-slate-400">
                 Total Project: <strong className="text-cyan-300">{projects.length}</strong>
               </span>
-              <button
-                type="button"
-                onClick={handleStartAdd}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-bold font-cyber text-xs shadow-md shadow-cyan-500/20 active:scale-95 transition-all cursor-pointer"
-              >
-                <Plus className="w-4 h-4" />
-                <span>+ Tambah Project Baru</span>
-              </button>
+              <div className="flex items-center gap-2 flex-wrap">
+                <button
+                  type="button"
+                  onClick={handleQuickAddRelokasi}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-emerald-950/80 border border-emerald-500/50 hover:bg-emerald-900/80 text-emerald-300 font-cyber font-bold text-xs shadow-md active:scale-95 transition-all cursor-pointer"
+                  title="Gunakan atau daftarkan Project Relokasi Government"
+                >
+                  <Building className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>+ Relokasi Gov</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleStartAdd}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-bold font-cyber text-xs shadow-md shadow-cyan-500/20 active:scale-95 transition-all cursor-pointer"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>+ Tambah Baru</span>
+                </button>
+              </div>
             </div>
           )}
 
@@ -215,15 +298,149 @@ export const ProjectManagementModal: React.FC<ProjectManagementModalProps> = ({
                 </button>
               </div>
 
+              {/* Template Cepat: Relokasi Government & Pengamanan */}
+              {!editingProjectId && (
+                <div className="p-2.5 rounded-lg bg-slate-900/80 border border-slate-700/60 space-y-2 text-xs">
+                  <span className="text-[11px] font-mono-cyber text-slate-400 block font-semibold">
+                    Template Cepat Kategori Project:
+                  </span>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={handleApplyRelokasiTemplate}
+                      className="px-2.5 py-1.5 rounded-lg bg-emerald-950/60 hover:bg-emerald-900/80 border border-emerald-500/50 text-emerald-300 text-xs font-mono-cyber font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                    >
+                      <Building className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                      <span>Terapkan Relokasi Gov</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {error && (
                 <div className="p-2.5 rounded-lg bg-red-950/80 border border-red-500 text-red-200 text-xs">
                   {error}
                 </div>
               )}
 
+              {/* Pilihan Kategori: Relokasi Government vs Pengamanan */}
+              <div>
+                <label className="block text-xs font-mono-cyber text-slate-300 mb-1.5 font-semibold">
+                  Kategori Project <span className="text-amber-400">*</span>
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setCategory('Relokasi Government')}
+                    className={`flex items-center justify-center gap-2 p-2.5 rounded-xl border text-xs font-mono-cyber font-bold transition-all cursor-pointer ${
+                      category === 'Relokasi Government'
+                        ? 'bg-emerald-950/90 border-emerald-400 text-emerald-300 shadow-sm shadow-emerald-500/20 ring-1 ring-emerald-400/40'
+                        : 'bg-[#091224] border-slate-700 text-slate-400 hover:text-slate-200 hover:border-slate-600'
+                    }`}
+                  >
+                    <Building className={`w-4 h-4 ${category === 'Relokasi Government' ? 'text-emerald-400' : 'text-slate-500'}`} />
+                    <span>Relokasi Goverment</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCategory('Pengamanan')}
+                    className={`flex items-center justify-center gap-2 p-2.5 rounded-xl border text-xs font-mono-cyber font-bold transition-all cursor-pointer ${
+                      category === 'Pengamanan'
+                        ? 'bg-amber-950/90 border-amber-400 text-amber-300 shadow-sm shadow-amber-500/20 ring-1 ring-amber-400/40'
+                        : 'bg-[#091224] border-slate-700 text-slate-400 hover:text-slate-200 hover:border-slate-600'
+                    }`}
+                  >
+                    <Shield className={`w-4 h-4 ${category === 'Pengamanan' ? 'text-amber-400' : 'text-slate-500'}`} />
+                    <span>Pengamanan</span>
+                  </button>
+                </div>
+
+                {/* Sub-Pilihan Jenis Pengamanan (Muncul saat Kategori = Pengamanan) */}
+                {category === 'Pengamanan' && (
+                  <div className="p-3 rounded-xl bg-[#060c18] border border-amber-500/40 space-y-2.5 animate-fadeIn">
+                    <div className="flex items-center justify-between">
+                      <label className="block text-xs font-mono-cyber text-amber-300 font-bold">
+                        Pilihan Jenis Pengamanan:
+                      </label>
+                      {jenisPengamanan && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setJenisPengamanan('');
+                            setSubJenisPerapihanAsset([]);
+                          }}
+                          className="text-[10px] font-mono-cyber text-slate-400 hover:text-amber-300 cursor-pointer"
+                        >
+                          Reset Pilihan
+                        </button>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      {JENIS_PENGAMANAN_OPTIONS.map((opt) => {
+                        const isSelected = jenisPengamanan === opt.id;
+                        return (
+                          <button
+                            key={opt.id}
+                            type="button"
+                            onClick={() => {
+                              setJenisPengamanan(isSelected ? '' : opt.id);
+                            }}
+                            className={`flex items-center gap-2 p-2 rounded-lg border text-left transition-all cursor-pointer ${
+                              isSelected
+                                ? 'bg-amber-950/80 border-amber-400 text-white font-bold shadow-sm'
+                                : 'bg-[#040812] border-slate-700 text-slate-400 hover:text-slate-200 hover:border-amber-500/40'
+                            }`}
+                          >
+                            <div className={`w-3 h-3 rounded-full border ${isSelected ? 'bg-amber-400 border-amber-400' : 'border-slate-500'}`} />
+                            <span className="text-[11px] font-mono-cyber leading-tight">
+                              {opt.label}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {/* Rincian jika Perapihan Asset dipilih */}
+                    {(jenisPengamanan === 'Perapihan Asset' || subJenisPerapihanAsset.length > 0) && (
+                      <div className="pt-2 border-t border-slate-800 space-y-1.5">
+                        <span className="text-[11px] font-mono-cyber text-amber-400 font-semibold block">
+                          Rincian Perapihan Asset:
+                        </span>
+                        <div className="space-y-1">
+                          {SUB_JENIS_PERAPIHAN_ASSET_OPTIONS.map((sub) => {
+                            const isChecked = subJenisPerapihanAsset.includes(sub.id);
+                            return (
+                              <label
+                                key={sub.id}
+                                className="flex items-center gap-2 text-xs font-mono-cyber text-slate-300 cursor-pointer select-none"
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={isChecked}
+                                  onChange={(e) => {
+                                    setJenisPengamanan('Perapihan Asset');
+                                    if (e.target.checked) {
+                                      setSubJenisPerapihanAsset([...subJenisPerapihanAsset, sub.id]);
+                                    } else {
+                                      setSubJenisPerapihanAsset(subJenisPerapihanAsset.filter((s) => s !== sub.id));
+                                    }
+                                  }}
+                                  className="accent-amber-400 rounded"
+                                />
+                                <span>{sub.label}</span>
+                              </label>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
               {/* Input Nama Project */}
               <div>
-                <label className="block text-xs font-mono-cyber text-slate-300 mb-1">
+                <label className="block text-xs font-mono-cyber text-slate-300 mb-1 font-semibold">
                   Nama Project <span className="text-amber-400">*</span>
                 </label>
                 <input
@@ -231,7 +448,7 @@ export const ProjectManagementModal: React.FC<ProjectManagementModalProps> = ({
                   required
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="Contoh: FO Backbone Jalur Pantura Segmen 1"
+                  placeholder={category === 'Pengamanan' ? "Contoh: Pengamanan Jaringan FO / Jalur Tol" : "Contoh: Relokasi Jaringan Pemda / Fasilitas Umum"}
                   className="w-full bg-[#091224] border border-slate-700 focus:border-cyan-400 rounded-lg px-3 py-2 text-xs sm:text-sm text-white focus:outline-none font-mono-cyber"
                 />
               </div>
@@ -411,6 +628,22 @@ export const ProjectManagementModal: React.FC<ProjectManagementModalProps> = ({
                         {proj.area && (
                           <span className="text-[10px] font-mono-cyber font-bold px-1.5 py-0.5 rounded bg-indigo-950/80 border border-indigo-500/40 text-indigo-300">
                             {proj.area}
+                          </span>
+                        )}
+                        {(proj.category === 'Pengamanan' || proj.name?.toLowerCase().includes('pengamanan') || proj.code?.toUpperCase().includes('PENGAMANAN')) ? (
+                          <span className="text-[10px] font-mono-cyber font-bold px-1.5 py-0.5 rounded bg-amber-950/90 border border-amber-500/60 text-amber-300 flex items-center gap-1">
+                            <Shield className="w-2.5 h-2.5 text-amber-400" />
+                            <span>PENGAMANAN</span>
+                          </span>
+                        ) : (
+                          <span className="text-[10px] font-mono-cyber font-bold px-1.5 py-0.5 rounded bg-emerald-950/90 border border-emerald-500/60 text-emerald-300 flex items-center gap-1">
+                            <Building className="w-2.5 h-2.5 text-emerald-400" />
+                            <span>RELOKASI GOV</span>
+                          </span>
+                        )}
+                        {proj.jenisPengamanan && (
+                          <span className="text-[10px] font-mono-cyber font-semibold px-1.5 py-0.5 rounded bg-amber-950/80 border border-amber-500/40 text-amber-200">
+                            {proj.jenisPengamanan}
                           </span>
                         )}
                         <h4 className="text-xs sm:text-sm font-bold text-white font-cyber">

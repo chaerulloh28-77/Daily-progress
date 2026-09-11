@@ -7,6 +7,7 @@ import { SavedReportsDrawer } from './components/SavedReportsDrawer';
 import { ProjectManagementModal } from './components/ProjectManagementModal';
 import { ClearScreenModal } from './components/ClearScreenModal';
 import { MobileInstallBanner } from './components/MobileInstallBanner';
+import { BackgroundStatusBanner } from './components/BackgroundStatusBanner';
 import { DailyReportFormData, ProjectItem, CurrentUser, UserRole } from './types';
 import { INITIAL_REPORT_DATA, ACTIVE_PROJECTS, PROJECT_RELOKASI_GOVERNMENT } from './data';
 import { CheckCircle } from 'lucide-react';
@@ -24,6 +25,10 @@ import {
   saveProjectToCloud,
   deleteProjectFromCloud 
 } from './services/cloudSync';
+import { 
+  saveActiveDraftInBackground, 
+  enqueueReportForBackgroundSync 
+} from './services/backgroundSync';
 
 export default function App() {
   // Auth state: Routing utama (/) langsung merender LoginPage tanpa splash screen atau intro
@@ -114,6 +119,20 @@ export default function App() {
     if (isLoggedIn) {
       localStorage.setItem('gov_current_draft', JSON.stringify(formData));
     }
+  }, [formData, isLoggedIn]);
+
+  // Background Auto-Save (berjalan saat tab diminimalkan, layar mati, atau beralih aplikasi)
+  useEffect(() => {
+    const handleBgFlush = () => {
+      if (isLoggedIn && formData) {
+        saveActiveDraftInBackground(formData);
+        window.dispatchEvent(new CustomEvent('gov-draft-saved-bg'));
+      }
+    };
+    window.addEventListener('gov-bg-flush-draft', handleBgFlush);
+    return () => {
+      window.removeEventListener('gov-bg-flush-draft', handleBgFlush);
+    };
   }, [formData, isLoggedIn]);
 
   // Sync saved reports to local storage
@@ -368,6 +387,8 @@ export default function App() {
       minute: '2-digit',
     }) + ' WIB';
 
+    const isOnline = typeof navigator !== 'undefined' ? navigator.onLine : true;
+
     if (editingReportId) {
       // Dapatkan data laporan sebelum diubah untuk menghitung detail perubahannya
       const previousReport = savedReports.find((item) => item.id === editingReportId) || null;
@@ -388,26 +409,37 @@ export default function App() {
         authorEmail: previousReport?.authorEmail || currentUser.email,
         authorRole: previousReport?.authorRole || currentUser.role,
         lastEditedBy: currentUser.email,
-        syncedToCloud: true,
+        syncedToCloud: isOnline,
       };
 
       setSavedReports((prev) =>
         prev.map((item) => (item.id === editingReportId ? updatedReport : item))
       );
 
-      // Sinkronisasi background ke cloud storage (Firebase/Supabase)
-      syncReportToCloud(updatedReport, currentUser).catch((err) => {
-        console.error('[App] Gagal cloud sync:', err);
-      });
+      if (!isOnline) {
+        enqueueReportForBackgroundSync(updatedReport, currentUser.email, currentUser.role);
+        showToast('Mode Offline: Perubahan disimpan di latar belakang & akan sinkron otomatis.');
+      } else {
+        // Sinkronisasi background ke cloud storage (Firebase Firestore)
+        syncReportToCloud(updatedReport, currentUser).then((res) => {
+          if (!res.success) {
+            enqueueReportForBackgroundSync(updatedReport, currentUser.email, currentUser.role);
+          }
+        }).catch((err) => {
+          console.error('[App] Gagal cloud sync, dialihkan ke antrean latar belakang:', err);
+          enqueueReportForBackgroundSync(updatedReport, currentUser.email, currentUser.role);
+        });
 
-      // Trigger notifikasi edit laporan ke chaerulloh28@gmail.com
-      sendReportEditNotification(updatedReport, previousReport, currentUser.email).catch((err) => {
-        console.error('[App] Gagal mengirim email notifikasi edit laporan:', err);
-      });
+        // Trigger notifikasi edit laporan ke chaerulloh28@gmail.com
+        sendReportEditNotification(updatedReport, previousReport, currentUser.email).catch((err) => {
+          console.error('[App] Gagal mengirim email notifikasi edit laporan:', err);
+        });
+
+        showToast(`Perubahan laporan disimpan & sinkron cloud aktif!`);
+      }
 
       setEditingReportId(null);
       setActiveReportModal(updatedReport);
-      showToast(`Perubahan laporan disimpan & sinkron cloud aktif!`);
     } else {
       // CREATE NEW REPORT
       const newReportId = 'rep-' + Date.now();
@@ -418,23 +450,34 @@ export default function App() {
         authorEmail: currentUser.email,
         authorRole: currentUser.role,
         authorName: currentUser.name || currentUser.email.split('@')[0],
-        syncedToCloud: true,
+        syncedToCloud: isOnline,
       };
 
       setSavedReports((prev) => [reportWithTimestamp, ...prev]);
 
-      // Sinkronisasi background ke cloud storage (Firebase/Supabase)
-      syncReportToCloud(reportWithTimestamp, currentUser).catch((err) => {
-        console.error('[App] Gagal cloud sync:', err);
-      });
+      if (!isOnline) {
+        enqueueReportForBackgroundSync(reportWithTimestamp, currentUser.email, currentUser.role);
+        showToast('Mode Offline: Laporan disimpan di latar belakang. Akan otomatis dikirim saat online.');
+      } else {
+        // Sinkronisasi background ke cloud storage (Firebase Firestore)
+        syncReportToCloud(reportWithTimestamp, currentUser).then((res) => {
+          if (!res.success) {
+            enqueueReportForBackgroundSync(reportWithTimestamp, currentUser.email, currentUser.role);
+          }
+        }).catch((err) => {
+          console.error('[App] Gagal cloud sync, dialihkan ke antrean latar belakang:', err);
+          enqueueReportForBackgroundSync(reportWithTimestamp, currentUser.email, currentUser.role);
+        });
 
-      // Trigger auto-save rekap progress harian ke chaerulloh28@gmail.com
-      sendDailyReportNotification(reportWithTimestamp, currentUser.email).catch((err) => {
-        console.error('[App] Gagal mengirim email rekap progress harian:', err);
-      });
+        // Trigger auto-save rekap progress harian ke chaerulloh28@gmail.com
+        sendDailyReportNotification(reportWithTimestamp, currentUser.email).catch((err) => {
+          console.error('[App] Gagal mengirim email rekap progress harian:', err);
+        });
+
+        showToast(`Laporan dibuat oleh ${currentUser.email} & tersimpan aman.`);
+      }
 
       setActiveReportModal(reportWithTimestamp);
-      showToast(`Laporan dibuat oleh ${currentUser.email} & tersimpan aman.`);
     }
   };
 
@@ -623,6 +666,7 @@ export default function App() {
           {/* Body Content / Form */}
           <main className="flex-1 px-3 sm:px-5 pt-2 pb-8">
             <MobileInstallBanner />
+            <BackgroundStatusBanner />
             
             <DailyReportForm
               formData={formData}

@@ -9,7 +9,8 @@ import {
   getDocFromServer,
   query,
   orderBy,
-  Unsubscribe
+  Unsubscribe,
+  enableIndexedDbPersistence
 } from 'firebase/firestore';
 import { 
   getAuth, 
@@ -33,6 +34,17 @@ const app = initializeApp(firebaseConfig);
 
 // Initialize Firestore with configured database ID
 export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
+
+// Enable offline persistence in background for reliable field operation
+if (typeof window !== 'undefined') {
+  enableIndexedDbPersistence(db).catch((err) => {
+    if (err.code === 'failed-precondition') {
+      console.info('[Firestore] Multiple tabs open; persistence active in primary tab.');
+    } else if (err.code === 'unimplemented') {
+      console.warn('[Firestore] The current browser does not support offline persistence.');
+    }
+  });
+}
 
 // Initialize Auth
 export const auth = getAuth(app);

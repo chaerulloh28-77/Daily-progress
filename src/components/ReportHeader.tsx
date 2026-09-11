@@ -140,12 +140,16 @@ export const ReportHeader: React.FC<ReportHeaderProps> = ({
                 Monitoring Harian <span className="text-cyan-400">(Daily Progress)</span>
               </h1>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <span className="inline-flex items-center gap-1.5 text-[10px] font-mono-cyber text-emerald-400 bg-emerald-950/70 px-2 py-0.5 rounded-full border border-emerald-500/40" title="Cloud Database Terpusat Aktif: Sinkronisasi HP ⇋ Laptop Real-Time">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                 <Cloud className="w-3 h-3 text-emerald-400" />
-                <span className="hidden xs:inline">Cloud Terpusat (HP ⇋ Laptop)</span>
-                <span className="xs:hidden">Cloud Sync</span>
+                <span className="hidden xs:inline">Cloud (HP ⇋ Laptop)</span>
+                <span className="xs:hidden">Cloud</span>
+              </span>
+              <span className="inline-flex items-center gap-1 text-[10px] font-mono-cyber text-cyan-300 bg-cyan-950/70 px-2 py-0.5 rounded-full border border-cyan-500/30" title="Aplikasi Bekerja Dibelakang Layar (PWA Offline & Background Auto-Save Aktif)">
+                <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
+                <span>Background Sync</span>
               </span>
               <span className="text-[10px] font-mono-cyber text-cyan-400/90 font-medium tracking-wider">
                 Designed by PAUL

@@ -29,8 +29,8 @@ export const ReportHeader: React.FC<ReportHeaderProps> = ({
   const isAdmin = userRole === 'admin' || isSuperAdminUser;
 
   return (
-    <header className="sticky top-0 z-30 bg-[#050b14]/95 backdrop-blur-md border-b border-cyan-500/20 px-4 py-3 shadow-lg shadow-black/40">
-      <div className="max-w-2xl mx-auto">
+    <header className="sticky top-0 z-30 bg-[#050b14]/98 backdrop-blur-md border-b border-cyan-500/20 px-3 sm:px-4 py-3 shadow-lg shadow-black/50">
+      <div className="w-full mx-auto">
         {/* Top telemetry bar */}
         <div className="flex items-center justify-between gap-2 pb-2 mb-2 border-b border-slate-800/80 text-[11px] font-mono-cyber">
           {/* Dual Brand Logos: LinkNet (Left) + PMO MS CKT (Right) + App Icon */}

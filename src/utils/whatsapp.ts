@@ -149,6 +149,27 @@ export interface AreaWeeklyStats {
   totalKendala: number;
 }
 
+export interface KendalaIssueItem {
+  date?: string;
+  area: string;
+  waspang: string;
+  projectName: string;
+  category: string;
+  notes: string;
+}
+
+export interface CategoryRecapStats {
+  categoryKey: 'relokasi' | 'pengamanan';
+  categoryTitle: string;
+  badge: string;
+  totalReports: number;
+  activeWaspangs: number;
+  totalSipil: number;
+  totalKabel: number;
+  totalKendala: number;
+  areas: AreaWeeklyStats[];
+}
+
 export interface WeeklyRecapData {
   startDate: string;
   endDate: string;
@@ -161,6 +182,165 @@ export interface WeeklyRecapData {
     totalKabel: number;
     totalKendala: number;
   };
+  relokasi?: CategoryRecapStats;
+  pengamanan?: CategoryRecapStats;
+  allKendalaList?: KendalaIssueItem[];
+}
+
+export function isPengamananReport(rep: { projectCategory?: string; projectName?: string }): boolean {
+  if (rep.projectCategory === 'Pengamanan') return true;
+  const cat = (rep.projectCategory || '').toLowerCase();
+  const name = (rep.projectName || '').toLowerCase();
+  return cat.includes('pengamanan') || name.includes('pengamanan');
+}
+
+export function buildCategorySummary(
+  reports: DailyReportFormData[],
+  categoryKey: 'relokasi' | 'pengamanan'
+): CategoryRecapStats {
+  const definedAreas = ['Jabo 1', 'Jabo 2', 'Jabo 3'];
+  const isPeng = categoryKey === 'pengamanan';
+  const categoryTitle = isPeng ? 'PENGAMANAN' : 'RELOKASI GOV';
+  const badge = isPeng ? '🛡️' : '🔵';
+
+  const areaMap: Record<string, Record<string, {
+    reports: DailyReportFormData[];
+    dates: Set<string>;
+    totalSipil: number;
+    totalKabel: number;
+    kendala: string[];
+    projects: Set<string>;
+  }>> = {
+    'Jabo 1': {},
+    'Jabo 2': {},
+    'Jabo 3': {},
+  };
+
+  reports.forEach((rep) => {
+    let areaKey = rep.area?.trim() || '';
+    if (!definedAreas.includes(areaKey)) {
+      areaKey = 'Jabo 1';
+    }
+
+    const waspangKey = (rep.waspangName && rep.waspangName.trim()) || 
+      (rep.authorEmail ? rep.authorEmail.split('@')[0] : 'Waspang Lapangan');
+
+    if (!areaMap[areaKey]) {
+      areaMap[areaKey] = {};
+    }
+    if (!areaMap[areaKey][waspangKey]) {
+      areaMap[areaKey][waspangKey] = {
+        reports: [],
+        dates: new Set(),
+        totalSipil: 0,
+        totalKabel: 0,
+        kendala: [],
+        projects: new Set(),
+      };
+    }
+
+    const wData = areaMap[areaKey][waspangKey];
+    wData.reports.push(rep);
+    if (rep.reportDate) wData.dates.add(rep.reportDate);
+    if (rep.projectName) wData.projects.add(rep.projectName);
+
+    const sipilVal = parseFloat(rep.totalProgressSipil) || 0;
+    wData.totalSipil += sipilVal;
+
+    const kabelVal = (parseFloat(rep.totalProgressKabel) || 0) + 
+      (parseFloat(rep.totalProgressKabelCoax || rep.pulling?.pullingCoax || '0') || 0);
+    wData.totalKabel += kabelVal;
+
+    const kendala = rep.kendalaLapangan?.trim();
+    if (kendala && kendala.toLowerCase() !== 'tidak ada kendala' && kendala !== '-') {
+      wData.kendala.push(`${rep.reportDate || 'Hari ini'}: ${kendala}`);
+    }
+  });
+
+  let totalReports = 0;
+  let totalSipil = 0;
+  let totalKabel = 0;
+  let totalKendala = 0;
+  const activeWaspangs = new Set<string>();
+
+  const areas: AreaWeeklyStats[] = definedAreas.map((areaName) => {
+    const waspangsDict = areaMap[areaName] || {};
+    const waspangsList: WaspangWeeklyStats[] = Object.entries(waspangsDict).map(([wName, wInfo]) => {
+      activeWaspangs.add(wName);
+      totalReports += wInfo.reports.length;
+      totalSipil += wInfo.totalSipil;
+      totalKabel += wInfo.totalKabel;
+      totalKendala += wInfo.kendala.length;
+
+      const sortedDates = Array.from(wInfo.dates as Set<string>).filter(Boolean).sort();
+      const latestDailyDate = sortedDates.length > 0 ? sortedDates[sortedDates.length - 1] : undefined;
+
+      return {
+        waspangName: wName,
+        reportCount: wInfo.reports.length,
+        totalDays: wInfo.dates.size || wInfo.reports.length,
+        totalSipil: Math.round(wInfo.totalSipil * 10) / 10,
+        totalKabel: Math.round(wInfo.totalKabel * 10) / 10,
+        totalKendala: wInfo.kendala.length,
+        kendalaSummaries: wInfo.kendala,
+        projects: Array.from(wInfo.projects),
+        reportDates: sortedDates,
+        latestDailyDate,
+      };
+    });
+
+    waspangsList.sort((a, b) => b.totalDays - a.totalDays || b.totalSipil - a.totalSipil);
+
+    const areaReports = waspangsList.reduce((acc, w) => acc + w.reportCount, 0);
+    const areaSipil = waspangsList.reduce((acc, w) => acc + w.totalSipil, 0);
+    const areaKabel = waspangsList.reduce((acc, w) => acc + w.totalKabel, 0);
+    const areaKendala = waspangsList.reduce((acc, w) => acc + w.totalKendala, 0);
+
+    return {
+      areaName,
+      waspangs: waspangsList,
+      totalReports: areaReports,
+      totalSipil: Math.round(areaSipil * 10) / 10,
+      totalKabel: Math.round(areaKabel * 10) / 10,
+      totalKendala: areaKendala,
+    };
+  });
+
+  return {
+    categoryKey,
+    categoryTitle,
+    badge,
+    totalReports,
+    activeWaspangs: activeWaspangs.size,
+    totalSipil: Math.round(totalSipil * 10) / 10,
+    totalKabel: Math.round(totalKabel * 10) / 10,
+    totalKendala,
+    areas,
+  };
+}
+
+export function extractKendalaList(reports: DailyReportFormData[]): KendalaIssueItem[] {
+  const issues: KendalaIssueItem[] = [];
+  reports.forEach((rep) => {
+    const kendala = rep.kendalaLapangan?.trim();
+    if (kendala && kendala.toLowerCase() !== 'tidak ada kendala' && kendala !== '-') {
+      const area = rep.area?.trim() || 'Jabo 1';
+      const waspang = (rep.waspangName && rep.waspangName.trim()) || 
+        (rep.authorEmail ? rep.authorEmail.split('@')[0] : 'Waspang Lapangan');
+      const projectName = rep.projectName?.trim() || 'Project';
+      const category = isPengamananReport(rep) ? 'Pengamanan' : 'Relokasi Government';
+
+      issues.push({
+        date: rep.reportDate,
+        area,
+        waspang,
+        projectName,
+        category,
+        notes: kendala,
+      });
+    }
+  });
+  return issues;
 }
 
 function formatIndonesianDate(isoDate: string): string {
@@ -255,11 +435,11 @@ export function generateWeeklyAdminWhatsAppText(data: WeeklyRecapData): string {
     `📅 *Periode     :* ${periodText}`,
     `🏷️ *Rentang     :* ${data.periodLabel}`,
     `🕒 *Waktu       :* ${timestamp}`,
-    `👤 *Update from :* Admin Dashboard (admin@gov.com)`,
+    `👤 *Update from :* Admin Dashboard`,
     `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`,
   ];
 
-  if (data.areas.length === 0 || data.grandTotal.totalReports === 0) {
+  if (data.grandTotal.totalReports === 0) {
     lines.push(``);
     lines.push(`_Belum ada data laporan harian yang masuk pada periode ini._`);
     lines.push(``);
@@ -268,11 +448,11 @@ export function generateWeeklyAdminWhatsAppText(data: WeeklyRecapData): string {
     return lines.join('\n');
   }
 
-  // 1. EXECUTIVE SUMMARY BLOCK
+  // 1. EXECUTIVE SUMMARY BLOCK (GRAND TOTAL)
   lines.push(``);
   lines.push(`*📈 RINGKASAN EKSEKUTIF (GRAND TOTAL)*`);
   lines.push(`• Total Laporan Masuk  : *${data.grandTotal.totalReports} Laporan*`);
-  lines.push(`• Waspang Aktif        : *${data.grandTotal.activeWaspangs} Personil Bertugas*`);
+  lines.push(`• Waspang Bertugas     : *${data.grandTotal.activeWaspangs} Personil*`);
   lines.push(`• Akumulasi Pek. Sipil : *${data.grandTotal.totalSipil.toLocaleString('id-ID')} Meter*`);
   lines.push(`• Akumulasi Pek. Kabel : *${data.grandTotal.totalKabel.toLocaleString('id-ID')} Meter*`);
   if (data.grandTotal.totalKendala > 0) {
@@ -282,71 +462,128 @@ export function generateWeeklyAdminWhatsAppText(data: WeeklyRecapData): string {
   }
   lines.push(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
 
-  // 2. BREAKDOWN PER AREA & WASPANG
+  // CATEGORY A: RELOKASI GOVERNMENT
+  const relokasi = data.relokasi;
   lines.push(``);
-  lines.push(`*📍 CAPAIAN KINERJA PER AREA & WASPANG*`);
-
-  const allKendalaList: { area: string; waspang: string; notes: string }[] = [];
-
-  data.areas.forEach((area, aIdx) => {
-    lines.push(``);
-    lines.push(`*🔹 [AREA ${area.areaName.toUpperCase()}]*`);
+  lines.push(`=================================`);
+  lines.push(`🔵 *KATEGORI A: RELOKASI GOV*`);
+  lines.push(`=================================`);
+  lines.push(`*Ringkasan Relokasi:*`);
+  if (relokasi) {
+    lines.push(`- Total Laporan: *${relokasi.totalReports} Laporan* (${relokasi.activeWaspangs} Personil)`);
     lines.push(
-      `   📊 _Subtotal Area: ${area.totalReports} Lap | Sipil: ${area.totalSipil.toLocaleString('id-ID')} m | Kabel: ${area.totalKabel.toLocaleString('id-ID')} m_`
+      `- Total Sipil  : *${relokasi.totalSipil.toLocaleString('id-ID')} m* | Total Kabel: *${relokasi.totalKabel.toLocaleString('id-ID')} m*`
     );
-    lines.push(`   ───────────────────────────`);
+    lines.push(
+      `- Status Isu   : *${relokasi.totalKendala > 0 ? `⚠️ ${relokasi.totalKendala} Kendala Terlaporkan` : `✅ Aman / Nihil Kendala`}*`
+    );
+    lines.push(`─────────────────────────────────`);
 
-    if (area.waspangs.length === 0) {
-      lines.push(`   _(Tidak ada pelaporan aktif pada area ini)_`);
+    const activeAreas = relokasi.areas.filter((a) => a.waspangs.length > 0);
+    if (activeAreas.length === 0) {
+      lines.push(`_(Tidak ada laporan project Relokasi Government pada periode ini)_`);
     } else {
-      area.waspangs.forEach((w) => {
-        // Collect kendala for summary section
-        if (w.kendalaSummaries && w.kendalaSummaries.length > 0) {
-          w.kendalaSummaries.forEach((kNote) => {
-            allKendalaList.push({
-              area: area.areaName,
-              waspang: w.waspangName,
-              notes: kNote,
-            });
-          });
-        }
-
-        const projectText = w.projects.length > 0 ? w.projects.join(', ') : '-';
-        const statusLabel = w.totalKendala > 0 
-          ? `⚠️ *${w.totalKendala} Kendala Terlaporkan*` 
-          : `✅ *Lancar / Nihil Kendala*`;
-        const datesText = formatDatesList(w.reportDates, w.latestDailyDate);
-
-        lines.push(`   👷 *${w.waspangName.toUpperCase()}*`);
-        lines.push(`      ├ 🗓️ *Kehadiran*    : *${w.totalDays} Hari* (${w.reportCount} laporan)`);
-        lines.push(`      ├ 📅 *Update Daily* : ${datesText}`);
-        lines.push(`      ├ 🏗️ *Pek. Sipil*   : *${w.totalSipil.toLocaleString('id-ID')} m* (Boring & Pit)`);
-        lines.push(`      ├ ⚡ *Pek. Kabel*   : *${w.totalKabel.toLocaleString('id-ID')} m* (FO & Coax)`);
-        lines.push(`      ├ 🎯 *Project*      : ${projectText}`);
-        lines.push(`      └ 🚦 *Status*       : ${statusLabel}`);
+      activeAreas.forEach((area) => {
         lines.push(``);
+        lines.push(`*🔹 [AREA ${area.areaName.toUpperCase()}]*`);
+        lines.push(
+          `   📊 _Subtotal: ${area.totalReports} Lap | Sipil: ${area.totalSipil.toLocaleString('id-ID')} m | Kabel: ${area.totalKabel.toLocaleString('id-ID')} m_`
+        );
+        lines.push(`   ───────────────────────────`);
+
+        area.waspangs.forEach((w) => {
+          const projectText = w.projects.length > 0 ? w.projects.join(', ') : '-';
+          const statusLabel = w.totalKendala > 0 
+            ? `⚠️ *${w.totalKendala} Kendala Terlaporkan*` 
+            : `✅ *Lancar / Nihil Kendala*`;
+          const datesText = formatDatesList(w.reportDates, w.latestDailyDate);
+
+          lines.push(`   👷 *${w.waspangName.toUpperCase()}*`);
+          lines.push(`      ├ 🗓️ *Kehadiran*    : *${w.totalDays} Hari* (${w.reportCount} laporan)`);
+          lines.push(`      ├ 📅 *Update Daily* : ${datesText}`);
+          lines.push(`      ├ 🏗️ *Pek. Sipil*   : *${w.totalSipil.toLocaleString('id-ID')} m* (Boring & Pit)`);
+          lines.push(`      ├ ⚡ *Pek. Kabel*   : *${w.totalKabel.toLocaleString('id-ID')} m* (FO & Coax)`);
+          lines.push(`      ├ 🎯 *Project*      : ${projectText}`);
+          lines.push(`      └ 🚦 *Status*       : ${statusLabel}`);
+          lines.push(``);
+        });
       });
     }
-  });
+  } else {
+    lines.push(`_(Data kategori relokasi belum terdefinisi)_`);
+  }
 
-  lines.push(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+  // CATEGORY B: PENGAMANAN
+  const pengamanan = data.pengamanan;
+  lines.push(``);
+  lines.push(`=================================`);
+  lines.push(`🛡️ *KATEGORI B: PENGAMANAN*`);
+  lines.push(`=================================`);
+  lines.push(`*Ringkasan Pengamanan:*`);
+  if (pengamanan) {
+    lines.push(`- Total Laporan: *${pengamanan.totalReports} Laporan* (${pengamanan.activeWaspangs} Personil)`);
+    lines.push(
+      `- Total Sipil  : *${pengamanan.totalSipil.toLocaleString('id-ID')} m* | Total Kabel: *${pengamanan.totalKabel.toLocaleString('id-ID')} m*`
+    );
+    lines.push(
+      `- Status Isu   : *${pengamanan.totalKendala > 0 ? `⚠️ ${pengamanan.totalKendala} Kendala Terlaporkan` : `✅ Aman / Nihil Kendala`}*`
+    );
+    lines.push(`─────────────────────────────────`);
 
-  // 3. DAFTAR KENDALA & ACTION ITEMS SECTION
-  if (allKendalaList.length > 0) {
+    const activeAreas = pengamanan.areas.filter((a) => a.waspangs.length > 0);
+    if (activeAreas.length === 0) {
+      lines.push(`_(Tidak ada laporan project Pengamanan pada periode ini)_`);
+    } else {
+      activeAreas.forEach((area) => {
+        lines.push(``);
+        lines.push(`*🔹 [AREA ${area.areaName.toUpperCase()}]*`);
+        lines.push(
+          `   📊 _Subtotal: ${area.totalReports} Lap | Sipil: ${area.totalSipil.toLocaleString('id-ID')} m | Kabel: ${area.totalKabel.toLocaleString('id-ID')} m_`
+        );
+        lines.push(`   ───────────────────────────`);
+
+        area.waspangs.forEach((w) => {
+          const projectText = w.projects.length > 0 ? w.projects.join(', ') : '-';
+          const statusLabel = w.totalKendala > 0 
+            ? `⚠️ *${w.totalKendala} Kendala Terlaporkan*` 
+            : `✅ *Lancar / Nihil Kendala*`;
+          const datesText = formatDatesList(w.reportDates, w.latestDailyDate);
+
+          lines.push(`   👷 *${w.waspangName.toUpperCase()}*`);
+          lines.push(`      ├ 🗓️ *Kehadiran*    : *${w.totalDays} Hari* (${w.reportCount} laporan)`);
+          lines.push(`      ├ 📅 *Update Daily* : ${datesText}`);
+          lines.push(`      ├ 🏗️ *Pek. Sipil*   : *${w.totalSipil.toLocaleString('id-ID')} m* (Boring & Pit)`);
+          lines.push(`      ├ ⚡ *Pek. Kabel*   : *${w.totalKabel.toLocaleString('id-ID')} m* (FO & Coax)`);
+          lines.push(`      ├ 🎯 *Project*      : ${projectText}`);
+          lines.push(`      └ 🚦 *Status*       : ${statusLabel}`);
+          lines.push(``);
+        });
+      });
+    }
+  } else {
+    lines.push(`_(Data kategori pengamanan belum terdefinisi)_`);
+  }
+
+  // 3. COMBINED KENDALA & ACTION ITEMS SECTION
+  lines.push(``);
+  lines.push(`=================================`);
+  lines.push(`⚠️ *REKAP KENDALA & ISU LAPANGAN*`);
+  lines.push(`=================================`);
+
+  const kendalaList = data.allKendalaList || [];
+  if (kendalaList.length > 0) {
+    lines.push(`Daftar kendala lapangan yang memerlukan koordinasi / tindak lanjut (${kendalaList.length} Isu):`);
     lines.push(``);
-    lines.push(`*⚠️ DAFTAR KENDALA & ISU LAPANGAN (${allKendalaList.length} Isu):*`);
-    lines.push(`Berikut kendala lapangan yang membutuhkan koordinasi / tindak lanjut:`);
-    lines.push(``);
-    allKendalaList.forEach((item, idx) => {
+    kendalaList.forEach((item, idx) => {
       lines.push(`${idx + 1}. *[${item.area} • ${item.waspang}]*`);
-      lines.push(`   ↳ _"${item.notes}"_`);
+      lines.push(`   🏷️ _Project: ${item.projectName} (${item.category})_`);
+      lines.push(`   ↳ ⚠️ _"${item.notes}"_`);
+      lines.push(``);
     });
-    lines.push(``);
     lines.push(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
   } else {
-    lines.push(``);
     lines.push(`*✅ EVALUASI KENDALA:*`);
-    lines.push(`Seluruh pekerjaan sipil & penarikan kabel berjalan aman dan sesuai rencana.`);
+    lines.push(`Seluruh pekerjaan Relokasi Government & Pengamanan berjalan aman dan sesuai rencana (Nihil Kendala).`);
     lines.push(``);
     lines.push(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
   }

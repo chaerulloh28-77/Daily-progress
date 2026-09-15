@@ -624,13 +624,17 @@ export default function App() {
         </div>
       )}
 
-      {/* Main Viewport Container: Mobile-First Layout */}
+      {/* Main Viewport Container: Responsive Width Layout */}
       {!isLoggedIn ? (
         // 1. Halaman Login
         <LoginPage onLoginSuccess={handleLoginSuccess} />
       ) : (
         // 2. Halaman Laporan Harian (Setelah Login)
-        <div className="w-full max-w-2xl min-h-[100dvh] flex flex-col bg-[#050b14] relative border-x border-slate-900/60 shadow-2xl shadow-cyan-950/20">
+        <div className={`w-full ${
+          activeTab === 'admin' 
+            ? 'max-w-6xl xl:max-w-7xl px-2 sm:px-4 md:px-6' 
+            : 'max-w-3xl px-2 sm:px-4'
+        } min-h-[100dvh] flex flex-col bg-[#050b14] relative border-x border-slate-900/60 shadow-2xl shadow-cyan-950/20 transition-all duration-300`}>
           
           {/* Header Component */}
           <ReportHeader
@@ -645,7 +649,7 @@ export default function App() {
           />
 
           {/* Body Content / Form or Admin Rekap */}
-          <main className="flex-1 px-3 sm:px-5 pt-2 pb-8">
+          <main className="flex-1 px-1 sm:px-3 pt-3 pb-10">
             <MobileInstallBanner />
             <BackgroundStatusBanner />
             

@@ -31,7 +31,10 @@ import {
   AreaWeeklyStats, 
   WaspangWeeklyStats, 
   generateWeeklyAdminWhatsAppText, 
-  shareWeeklyRecapToWhatsApp 
+  shareWeeklyRecapToWhatsApp,
+  buildCategorySummary,
+  extractKendalaList,
+  isPengamananReport
 } from '../utils/whatsapp';
 import { WaspangPerformanceChart } from './WaspangPerformanceChart';
 
@@ -250,6 +253,14 @@ export const AdminWeeklyRecap: React.FC<AdminWeeklyRecapProps> = ({
       };
     });
 
+    // Compute category-separated data for Relokasi Government and Pengamanan
+    const relokasiReports = filteredReports.filter((r) => !isPengamananReport(r));
+    const pengamananReports = filteredReports.filter((r) => isPengamananReport(r));
+
+    const relokasi = buildCategorySummary(relokasiReports, 'relokasi');
+    const pengamanan = buildCategorySummary(pengamananReports, 'pengamanan');
+    const allKendalaList = extractKendalaList(filteredReports);
+
     return {
       startDate: startDateStr,
       endDate: endDateStr,
@@ -262,6 +273,9 @@ export const AdminWeeklyRecap: React.FC<AdminWeeklyRecapProps> = ({
         totalKabel: Math.round(grandKabel * 10) / 10,
         totalKendala: grandKendala,
       },
+      relokasi,
+      pengamanan,
+      allKendalaList,
     };
   }, [filteredReports, startDateStr, endDateStr, periodLabel]);
 
@@ -494,74 +508,94 @@ export const AdminWeeklyRecap: React.FC<AdminWeeklyRecapProps> = ({
       {/* KPI Cards: Grand Totals for Selected Period */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5 sm:gap-3">
         {/* Total Laporan */}
-        <div className="bg-[#091224] border border-cyan-500/25 rounded-2xl p-3 sm:p-3.5 shadow-lg shadow-cyan-950/10 flex flex-col justify-between">
+        <div className="bg-[#091224] border border-cyan-500/30 rounded-2xl p-3 sm:p-3.5 shadow-lg shadow-cyan-950/15 flex flex-col justify-between relative overflow-hidden group hover:border-cyan-400/50 transition-all">
+          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-cyan-500 to-teal-400" />
           <div className="flex items-center justify-between text-slate-400 mb-1">
-            <span className="text-[10px] sm:text-xs font-mono-cyber uppercase">Total Laporan</span>
-            <FileText className="w-3.5 h-3.5 text-cyan-400" />
+            <span className="text-[10px] sm:text-xs font-mono-cyber uppercase font-bold tracking-wider">Total Laporan</span>
+            <div className="w-6 h-6 rounded-lg bg-cyan-950/80 border border-cyan-500/30 flex items-center justify-center">
+              <FileText className="w-3.5 h-3.5 text-cyan-400" />
+            </div>
           </div>
-          <div className="text-lg sm:text-2xl font-bold font-mono-cyber text-white">
+          <div className="text-xl sm:text-2xl font-bold font-mono-cyber text-white my-0.5">
             {recapData.grandTotal.totalReports}
           </div>
-          <span className="text-[10px] font-mono-cyber text-cyan-400/80">
-            {periodLabel}
+          <span className="text-[10px] font-mono-cyber text-cyan-400/80 flex items-center gap-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-cyan-400" />
+            <span>{periodLabel}</span>
           </span>
         </div>
 
         {/* Waspang Aktif */}
-        <div className="bg-[#091224] border border-blue-500/25 rounded-2xl p-3 sm:p-3.5 shadow-lg shadow-blue-950/10 flex flex-col justify-between">
+        <div className="bg-[#091224] border border-blue-500/30 rounded-2xl p-3 sm:p-3.5 shadow-lg shadow-blue-950/15 flex flex-col justify-between relative overflow-hidden group hover:border-blue-400/50 transition-all">
+          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 to-indigo-400" />
           <div className="flex items-center justify-between text-slate-400 mb-1">
-            <span className="text-[10px] sm:text-xs font-mono-cyber uppercase">Waspang Aktif</span>
-            <User className="w-3.5 h-3.5 text-blue-400" />
+            <span className="text-[10px] sm:text-xs font-mono-cyber uppercase font-bold tracking-wider">Waspang Aktif</span>
+            <div className="w-6 h-6 rounded-lg bg-blue-950/80 border border-blue-500/30 flex items-center justify-center">
+              <User className="w-3.5 h-3.5 text-blue-400" />
+            </div>
           </div>
-          <div className="text-lg sm:text-2xl font-bold font-mono-cyber text-blue-300">
+          <div className="text-xl sm:text-2xl font-bold font-mono-cyber text-blue-300 my-0.5">
             {recapData.grandTotal.activeWaspangs}
           </div>
-          <span className="text-[10px] font-mono-cyber text-blue-400/80">
-            Personil Lapangan
+          <span className="text-[10px] font-mono-cyber text-blue-400/80 flex items-center gap-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-blue-400" />
+            <span>Personil Lapangan</span>
           </span>
         </div>
 
         {/* Total Progres Sipil */}
-        <div className="bg-[#091224] border border-emerald-500/25 rounded-2xl p-3 sm:p-3.5 shadow-lg shadow-emerald-950/10 flex flex-col justify-between">
+        <div className="bg-[#091224] border border-emerald-500/30 rounded-2xl p-3 sm:p-3.5 shadow-lg shadow-emerald-950/15 flex flex-col justify-between relative overflow-hidden group hover:border-emerald-400/50 transition-all">
+          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 to-teal-400" />
           <div className="flex items-center justify-between text-slate-400 mb-1">
-            <span className="text-[10px] sm:text-xs font-mono-cyber uppercase">Progres Sipil</span>
-            <Layers className="w-3.5 h-3.5 text-emerald-400" />
+            <span className="text-[10px] sm:text-xs font-mono-cyber uppercase font-bold tracking-wider">Progres Sipil</span>
+            <div className="w-6 h-6 rounded-lg bg-emerald-950/80 border border-emerald-500/30 flex items-center justify-center">
+              <Layers className="w-3.5 h-3.5 text-emerald-400" />
+            </div>
           </div>
-          <div className="text-lg sm:text-2xl font-bold font-mono-cyber text-emerald-300">
+          <div className="text-xl sm:text-2xl font-bold font-mono-cyber text-emerald-300 my-0.5">
             {recapData.grandTotal.totalSipil.toLocaleString('id-ID')}
             <span className="text-xs font-normal text-emerald-400 ml-1">m</span>
           </div>
-          <span className="text-[10px] font-mono-cyber text-emerald-400/80">
-            Boring &amp; Akses
+          <span className="text-[10px] font-mono-cyber text-emerald-400/80 flex items-center gap-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+            <span>Boring &amp; Akses</span>
           </span>
         </div>
 
         {/* Total Progres Kabel */}
-        <div className="bg-[#091224] border border-amber-500/25 rounded-2xl p-3 sm:p-3.5 shadow-lg shadow-amber-950/10 flex flex-col justify-between">
+        <div className="bg-[#091224] border border-amber-500/30 rounded-2xl p-3 sm:p-3.5 shadow-lg shadow-amber-950/15 flex flex-col justify-between relative overflow-hidden group hover:border-amber-400/50 transition-all">
+          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-amber-500 to-yellow-400" />
           <div className="flex items-center justify-between text-slate-400 mb-1">
-            <span className="text-[10px] sm:text-xs font-mono-cyber uppercase">Progres Kabel</span>
-            <Cable className="w-3.5 h-3.5 text-amber-400" />
+            <span className="text-[10px] sm:text-xs font-mono-cyber uppercase font-bold tracking-wider">Progres Kabel</span>
+            <div className="w-6 h-6 rounded-lg bg-amber-950/80 border border-amber-500/30 flex items-center justify-center">
+              <Cable className="w-3.5 h-3.5 text-amber-400" />
+            </div>
           </div>
-          <div className="text-lg sm:text-2xl font-bold font-mono-cyber text-amber-300">
+          <div className="text-xl sm:text-2xl font-bold font-mono-cyber text-amber-300 my-0.5">
             {recapData.grandTotal.totalKabel.toLocaleString('id-ID')}
             <span className="text-xs font-normal text-amber-400 ml-1">m</span>
           </div>
-          <span className="text-[10px] font-mono-cyber text-amber-400/80">
-            FO &amp; Coaxial
+          <span className="text-[10px] font-mono-cyber text-amber-400/80 flex items-center gap-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+            <span>FO &amp; Coaxial</span>
           </span>
         </div>
 
         {/* Total Kendala Lapangan */}
-        <div className="col-span-2 sm:col-span-1 bg-[#091224] border border-rose-500/25 rounded-2xl p-3 sm:p-3.5 shadow-lg shadow-rose-950/10 flex flex-col justify-between">
+        <div className="col-span-2 sm:col-span-1 bg-[#091224] border border-rose-500/30 rounded-2xl p-3 sm:p-3.5 shadow-lg shadow-rose-950/15 flex flex-col justify-between relative overflow-hidden group hover:border-rose-400/50 transition-all">
+          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-rose-500 to-red-400" />
           <div className="flex items-center justify-between text-slate-400 mb-1">
-            <span className="text-[10px] sm:text-xs font-mono-cyber uppercase">Isu Lapangan</span>
-            <AlertTriangle className="w-3.5 h-3.5 text-rose-400" />
+            <span className="text-[10px] sm:text-xs font-mono-cyber uppercase font-bold tracking-wider">Isu Lapangan</span>
+            <div className="w-6 h-6 rounded-lg bg-rose-950/80 border border-rose-500/30 flex items-center justify-center">
+              <AlertTriangle className="w-3.5 h-3.5 text-rose-400" />
+            </div>
           </div>
-          <div className="text-lg sm:text-2xl font-bold font-mono-cyber text-rose-300">
+          <div className="text-xl sm:text-2xl font-bold font-mono-cyber text-rose-300 my-0.5">
             {recapData.grandTotal.totalKendala}
           </div>
-          <span className="text-[10px] font-mono-cyber text-rose-400/80">
-            {recapData.grandTotal.totalKendala > 0 ? 'Perlu Perhatian' : 'Kondisi Aman'}
+          <span className="text-[10px] font-mono-cyber text-rose-400/80 flex items-center gap-1">
+            <span className={`w-1.5 h-1.5 rounded-full ${recapData.grandTotal.totalKendala > 0 ? 'bg-rose-400' : 'bg-emerald-400'}`} />
+            <span>{recapData.grandTotal.totalKendala > 0 ? 'Perlu Perhatian' : 'Kondisi Aman'}</span>
           </span>
         </div>
       </div>
@@ -653,6 +687,25 @@ export const AdminWeeklyRecap: React.FC<AdminWeeklyRecapProps> = ({
             </div>
           )}
         </div>
+
+        {/* Category Breakdown Badges */}
+        <div className="pt-2 border-t border-emerald-500/20 flex items-center gap-2 flex-wrap text-[11px] font-mono-cyber">
+          <span className="text-emerald-300/70">Format Pesan WhatsApp (Otomatis Dikelompokkan):</span>
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-950/80 border border-blue-500/30 text-blue-200">
+            <span>🔵</span>
+            <span>Relokasi Gov: <strong>{recapData.relokasi?.totalReports || 0} Lap</strong> ({recapData.relokasi?.totalSipil.toLocaleString('id-ID')}m sipil • {recapData.relokasi?.totalKabel.toLocaleString('id-ID')}m kabel)</span>
+          </span>
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-950/80 border border-amber-500/30 text-amber-200">
+            <span>🛡️</span>
+            <span>Pengamanan: <strong>{recapData.pengamanan?.totalReports || 0} Lap</strong> ({recapData.pengamanan?.totalSipil.toLocaleString('id-ID')}m sipil • {recapData.pengamanan?.totalKabel.toLocaleString('id-ID')}m kabel)</span>
+          </span>
+          {recapData.allKendalaList && recapData.allKendalaList.length > 0 && (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-rose-950/80 border border-rose-500/30 text-rose-200">
+              <span>⚠️</span>
+              <span>{recapData.allKendalaList.length} Kendala Terintegrasi</span>
+            </span>
+          )}
+        </div>
       </div>
 
       {/* REKAP DETAIL PER AREA & PER WASPANG */}
@@ -723,28 +776,30 @@ export const AdminWeeklyRecap: React.FC<AdminWeeklyRecapProps> = ({
                         className="bg-[#050b14] border border-slate-800 hover:border-slate-700/80 rounded-xl p-3.5 transition-all space-y-3"
                       >
                         {/* Waspang Title & Quick Stats */}
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-                          <div className="flex items-center gap-2.5">
-                            <div className="w-8 h-8 rounded-lg bg-slate-900 border border-slate-700 flex items-center justify-center text-slate-300 font-bold font-mono-cyber text-xs shrink-0">
+                        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+                          <div className="flex items-start sm:items-center gap-3 min-w-0">
+                            <div className="w-9 h-9 rounded-xl bg-[#091224] border border-cyan-500/30 flex items-center justify-center text-slate-300 font-bold font-mono-cyber text-xs shrink-0 shadow-sm">
                               <User className="w-4 h-4 text-cyan-400" />
                             </div>
-                            <div>
-                              <div className="flex items-center gap-2">
-                                <span className="font-cyber font-bold text-sm text-white">
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="font-cyber font-bold text-sm sm:text-base text-white tracking-wide truncate">
                                   {waspang.waspangName}
                                 </span>
-                                <span className="text-[10px] font-mono-cyber px-1.5 py-0.5 rounded bg-cyan-950/80 text-cyan-300 border border-cyan-500/30">
+                                <span className="text-[10px] font-mono-cyber px-1.5 py-0.5 rounded bg-cyan-950/90 text-cyan-300 border border-cyan-500/30">
                                   Waspang
                                 </span>
                               </div>
-                              <div className="text-[11px] font-mono-cyber text-slate-400 truncate max-w-sm">
-                                Project: {waspang.projects.join(', ') || '-'}
+                              <div className="text-xs font-mono-cyber text-slate-400 truncate mt-0.5" title={waspang.projects.join(', ')}>
+                                <span className="text-slate-500">Project:</span> {waspang.projects.join(', ') || '-'}
                               </div>
-                              <div className="flex flex-wrap items-center gap-1.5 text-[11px] font-mono-cyber mt-1">
-                                <Calendar className="w-3 h-3 text-emerald-400 shrink-0" />
-                                <span className="text-slate-400">Update Daily:</span>
+                              <div className="flex flex-wrap items-center gap-2 text-[11px] font-mono-cyber mt-1">
+                                <div className="flex items-center gap-1 text-slate-400">
+                                  <Calendar className="w-3 h-3 text-emerald-400 shrink-0" />
+                                  <span>Update Daily:</span>
+                                </div>
                                 {waspang.reportDates && waspang.reportDates.length > 0 ? (
-                                  <span className="text-emerald-300 font-semibold">
+                                  <span className="text-emerald-300 font-semibold bg-emerald-950/60 px-1.5 py-0.5 rounded border border-emerald-500/30 text-[10px]">
                                     {waspang.reportDates
                                       .map((d) => {
                                         const p = d.split('-');
@@ -753,10 +808,10 @@ export const AdminWeeklyRecap: React.FC<AdminWeeklyRecapProps> = ({
                                       .join(', ')}
                                   </span>
                                 ) : (
-                                  <span className="text-slate-500 italic">Belum ada tanggal</span>
+                                  <span className="text-slate-500 italic text-[10px]">Belum ada tanggal</span>
                                 )}
                                 {waspang.latestDailyDate && (
-                                  <span className="px-1.5 py-0.2 rounded bg-emerald-950/90 text-[10px] text-emerald-300 border border-emerald-500/40">
+                                  <span className="px-1.5 py-0.5 rounded bg-slate-800 text-[10px] text-cyan-300 border border-slate-700">
                                     Terakhir: {waspang.latestDailyDate}
                                   </span>
                                 )}
@@ -765,30 +820,30 @@ export const AdminWeeklyRecap: React.FC<AdminWeeklyRecapProps> = ({
                           </div>
 
                           {/* 4 Performance Metric Chips */}
-                          <div className="grid grid-cols-2 sm:flex sm:items-center gap-1.5 text-xs font-mono-cyber">
+                          <div className="grid grid-cols-2 sm:grid-cols-4 lg:flex lg:items-center gap-1.5 sm:gap-2 text-xs font-mono-cyber shrink-0">
                             {/* a. Total Hari Lapor */}
-                            <div className="px-2.5 py-1 rounded-lg bg-slate-900/90 border border-cyan-500/30 flex items-center justify-between sm:justify-start gap-1.5" title="Total Hari Lapor / Keaktifan">
+                            <div className="px-2.5 py-1.5 rounded-lg bg-[#091224] border border-cyan-500/30 flex items-center justify-between lg:justify-start gap-1.5 min-w-[90px]" title="Total Hari Lapor / Keaktifan">
                               <span className="text-[10px] text-slate-400">Lapor:</span>
                               <span className="font-bold text-cyan-300">{waspang.totalDays} Hari</span>
                             </div>
 
                             {/* b. Total Progress Sipil */}
-                            <div className="px-2.5 py-1 rounded-lg bg-slate-900/90 border border-emerald-500/30 flex items-center justify-between sm:justify-start gap-1.5" title="Total Progres Sipil (Boring & Pits)">
+                            <div className="px-2.5 py-1.5 rounded-lg bg-[#091224] border border-emerald-500/30 flex items-center justify-between lg:justify-start gap-1.5 min-w-[95px]" title="Total Progres Sipil (Boring & Pits)">
                               <span className="text-[10px] text-slate-400">Sipil:</span>
                               <span className="font-bold text-emerald-300">{waspang.totalSipil.toLocaleString('id-ID')} m</span>
                             </div>
 
                             {/* c. Total Progress Kabel */}
-                            <div className="px-2.5 py-1 rounded-lg bg-slate-900/90 border border-amber-500/30 flex items-center justify-between sm:justify-start gap-1.5" title="Total Progres Kabel (Pulling FO & Coax)">
+                            <div className="px-2.5 py-1.5 rounded-lg bg-[#091224] border border-amber-500/30 flex items-center justify-between lg:justify-start gap-1.5 min-w-[95px]" title="Total Progres Kabel (Pulling FO & Coax)">
                               <span className="text-[10px] text-slate-400">Kabel:</span>
                               <span className="font-bold text-amber-300">{waspang.totalKabel.toLocaleString('id-ID')} m</span>
                             </div>
 
                             {/* d. Kendala */}
-                            <div className={`px-2.5 py-1 rounded-lg border flex items-center justify-between sm:justify-start gap-1.5 ${
+                            <div className={`px-2.5 py-1.5 rounded-lg border flex items-center justify-between lg:justify-start gap-1.5 min-w-[80px] ${
                               waspang.totalKendala > 0 
                                 ? 'bg-rose-950/60 border-rose-500/40 text-rose-300' 
-                                : 'bg-slate-900/90 border-slate-700/60 text-slate-400'
+                                : 'bg-[#091224] border-slate-700/60 text-slate-400'
                             }`} title="Jumlah Kendala/Isu Lapangan yang dilaporkan">
                               <span className="text-[10px]">Kendala:</span>
                               <span className="font-bold">{waspang.totalKendala}</span>
@@ -798,7 +853,7 @@ export const AdminWeeklyRecap: React.FC<AdminWeeklyRecapProps> = ({
                             <button
                               type="button"
                               onClick={() => toggleWaspangExpand(waspangKey)}
-                              className="col-span-2 sm:col-span-1 p-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white flex items-center justify-center cursor-pointer transition-colors"
+                              className="col-span-2 sm:col-span-4 lg:col-span-1 h-8 px-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white flex items-center justify-center cursor-pointer transition-colors"
                               title="Buka / Tutup Rincian Kendala & Aktivitas"
                             >
                               {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
@@ -985,6 +1040,32 @@ export const AdminWeeklyRecap: React.FC<AdminWeeklyRecapProps> = ({
                             return (
                               <div key={idx} className="text-emerald-300 font-bold text-center py-0.5 text-xs">
                                 {line}
+                              </div>
+                            );
+                          }
+
+                          // Category Header Highlights
+                          if (line.includes('KATEGORI A: RELOKASI GOV')) {
+                            return (
+                              <div key={idx} className="my-1.5 py-1 px-2.5 rounded-lg bg-sky-950/80 border border-sky-400/40 text-sky-200 font-bold text-xs tracking-wide flex items-center gap-1.5">
+                                <span>🔵</span>
+                                <span>KATEGORI A: RELOKASI GOV</span>
+                              </div>
+                            );
+                          }
+                          if (line.includes('KATEGORI B: PENGAMANAN')) {
+                            return (
+                              <div key={idx} className="my-1.5 py-1 px-2.5 rounded-lg bg-amber-950/80 border border-amber-400/40 text-amber-200 font-bold text-xs tracking-wide flex items-center gap-1.5">
+                                <span>🛡️</span>
+                                <span>KATEGORI B: PENGAMANAN</span>
+                              </div>
+                            );
+                          }
+                          if (line.includes('REKAP KENDALA & ISU LAPANGAN')) {
+                            return (
+                              <div key={idx} className="my-1.5 py-1 px-2.5 rounded-lg bg-rose-950/80 border border-rose-400/40 text-rose-200 font-bold text-xs tracking-wide flex items-center gap-1.5">
+                                <span>⚠️</span>
+                                <span>REKAP KENDALA &amp; ISU LAPANGAN</span>
                               </div>
                             );
                           }

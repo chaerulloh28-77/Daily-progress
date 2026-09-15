@@ -126,3 +126,263 @@ export function shareToWhatsApp(report: DailyReportFormData, targetPhone?: strin
   link.click();
   document.body.removeChild(link);
 }
+
+export interface WaspangWeeklyStats {
+  waspangName: string;
+  reportCount: number;
+  totalDays: number;
+  totalSipil: number;
+  totalKabel: number;
+  totalKendala: number;
+  kendalaSummaries: string[];
+  projects: string[];
+  reportDates?: string[];
+  latestDailyDate?: string;
+}
+
+export interface AreaWeeklyStats {
+  areaName: string;
+  waspangs: WaspangWeeklyStats[];
+  totalReports: number;
+  totalSipil: number;
+  totalKabel: number;
+  totalKendala: number;
+}
+
+export interface WeeklyRecapData {
+  startDate: string;
+  endDate: string;
+  periodLabel: string;
+  areas: AreaWeeklyStats[];
+  grandTotal: {
+    totalReports: number;
+    activeWaspangs: number;
+    totalSipil: number;
+    totalKabel: number;
+    totalKendala: number;
+  };
+}
+
+function formatIndonesianDate(isoDate: string): string {
+  if (!isoDate) return '-';
+  const parts = isoDate.split('-');
+  if (parts.length === 3) {
+    const months = [
+      'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+      'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+    ];
+    const day = parseInt(parts[2], 10);
+    const mIdx = parseInt(parts[1], 10) - 1;
+    const year = parts[0];
+    return `${day} ${months[mIdx] || parts[1]} ${year}`;
+  }
+  return isoDate;
+}
+
+function formatGeneratedTimestamp(): string {
+  try {
+    const now = new Date();
+    const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+    const months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun',
+      'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'
+    ];
+    const dayName = days[now.getDay()];
+    const dateNum = now.getDate();
+    const monthName = months[now.getMonth()];
+    const year = now.getFullYear();
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    return `${dayName}, ${dateNum} ${monthName} ${year} • ${hours}:${minutes} WIB`;
+  } catch {
+    return `${new Date().toLocaleString('id-ID')} WIB`;
+  }
+}
+
+function formatShortIdDate(isoDate: string): string {
+  if (!isoDate) return '-';
+  const parts = isoDate.split('-');
+  if (parts.length === 3) {
+    const months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun',
+      'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'
+    ];
+    const day = parseInt(parts[2], 10);
+    const mIdx = parseInt(parts[1], 10) - 1;
+    const year = parts[0];
+    return `${day} ${months[mIdx] || parts[1]} ${year}`;
+  }
+  return isoDate;
+}
+
+function formatDatesList(dates?: string[], latest?: string): string {
+  if (!dates || dates.length === 0) {
+    return latest ? `*${formatShortIdDate(latest)}*` : '_Belum ada data tanggal_';
+  }
+
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+
+  if (dates.length === 1) {
+    return `*${formatShortIdDate(dates[0])}*`;
+  }
+
+  const dateItems = dates.map((d) => {
+    const parts = d.split('-');
+    if (parts.length === 3) {
+      const day = parseInt(parts[2], 10);
+      const mIdx = parseInt(parts[1], 10) - 1;
+      return `${day} ${months[mIdx] || ''}`.trim();
+    }
+    return d;
+  });
+
+  const latestStr = latest ? ` (Terakhir: *${formatShortIdDate(latest)}*)` : '';
+  return `*${dateItems.join(', ')}*${latestStr}`;
+}
+
+export function generateWeeklyAdminWhatsAppText(data: WeeklyRecapData): string {
+  const startFmt = formatIndonesianDate(data.startDate);
+  const endFmt = formatIndonesianDate(data.endDate);
+  const periodText = startFmt === endFmt ? startFmt : `${startFmt} s/d ${endFmt}`;
+  const timestamp = formatGeneratedTimestamp();
+
+  const lines: string[] = [
+    `*┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓*`,
+    `*📊 REKAP KINERJA & PROGRES WASPANG*`,
+    `*🏢 LINKNET & PMO MS CKT*`,
+    `*┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛*`,
+    ``,
+    `📅 *Periode     :* ${periodText}`,
+    `🏷️ *Rentang     :* ${data.periodLabel}`,
+    `🕒 *Waktu       :* ${timestamp}`,
+    `👤 *Update from :* Admin Dashboard (admin@gov.com)`,
+    `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`,
+  ];
+
+  if (data.areas.length === 0 || data.grandTotal.totalReports === 0) {
+    lines.push(``);
+    lines.push(`_Belum ada data laporan harian yang masuk pada periode ini._`);
+    lines.push(``);
+    lines.push(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+    lines.push(`_GovMonitor Intelligence System • PMO MS CKT_`);
+    return lines.join('\n');
+  }
+
+  // 1. EXECUTIVE SUMMARY BLOCK
+  lines.push(``);
+  lines.push(`*📈 RINGKASAN EKSEKUTIF (GRAND TOTAL)*`);
+  lines.push(`• Total Laporan Masuk  : *${data.grandTotal.totalReports} Laporan*`);
+  lines.push(`• Waspang Aktif        : *${data.grandTotal.activeWaspangs} Personil Bertugas*`);
+  lines.push(`• Akumulasi Pek. Sipil : *${data.grandTotal.totalSipil.toLocaleString('id-ID')} Meter*`);
+  lines.push(`• Akumulasi Pek. Kabel : *${data.grandTotal.totalKabel.toLocaleString('id-ID')} Meter*`);
+  if (data.grandTotal.totalKendala > 0) {
+    lines.push(`• Isu Lapangan         : *⚠️ ${data.grandTotal.totalKendala} Kendala Perlu Atensi*`);
+  } else {
+    lines.push(`• Isu Lapangan         : *✅ Kondisi Operasional Aman & Lancar*`);
+  }
+  lines.push(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+
+  // 2. BREAKDOWN PER AREA & WASPANG
+  lines.push(``);
+  lines.push(`*📍 CAPAIAN KINERJA PER AREA & WASPANG*`);
+
+  const allKendalaList: { area: string; waspang: string; notes: string }[] = [];
+
+  data.areas.forEach((area, aIdx) => {
+    lines.push(``);
+    lines.push(`*🔹 [AREA ${area.areaName.toUpperCase()}]*`);
+    lines.push(
+      `   📊 _Subtotal Area: ${area.totalReports} Lap | Sipil: ${area.totalSipil.toLocaleString('id-ID')} m | Kabel: ${area.totalKabel.toLocaleString('id-ID')} m_`
+    );
+    lines.push(`   ───────────────────────────`);
+
+    if (area.waspangs.length === 0) {
+      lines.push(`   _(Tidak ada pelaporan aktif pada area ini)_`);
+    } else {
+      area.waspangs.forEach((w) => {
+        // Collect kendala for summary section
+        if (w.kendalaSummaries && w.kendalaSummaries.length > 0) {
+          w.kendalaSummaries.forEach((kNote) => {
+            allKendalaList.push({
+              area: area.areaName,
+              waspang: w.waspangName,
+              notes: kNote,
+            });
+          });
+        }
+
+        const projectText = w.projects.length > 0 ? w.projects.join(', ') : '-';
+        const statusLabel = w.totalKendala > 0 
+          ? `⚠️ *${w.totalKendala} Kendala Terlaporkan*` 
+          : `✅ *Lancar / Nihil Kendala*`;
+        const datesText = formatDatesList(w.reportDates, w.latestDailyDate);
+
+        lines.push(`   👷 *${w.waspangName.toUpperCase()}*`);
+        lines.push(`      ├ 🗓️ *Kehadiran*    : *${w.totalDays} Hari* (${w.reportCount} laporan)`);
+        lines.push(`      ├ 📅 *Update Daily* : ${datesText}`);
+        lines.push(`      ├ 🏗️ *Pek. Sipil*   : *${w.totalSipil.toLocaleString('id-ID')} m* (Boring & Pit)`);
+        lines.push(`      ├ ⚡ *Pek. Kabel*   : *${w.totalKabel.toLocaleString('id-ID')} m* (FO & Coax)`);
+        lines.push(`      ├ 🎯 *Project*      : ${projectText}`);
+        lines.push(`      └ 🚦 *Status*       : ${statusLabel}`);
+        lines.push(``);
+      });
+    }
+  });
+
+  lines.push(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+
+  // 3. DAFTAR KENDALA & ACTION ITEMS SECTION
+  if (allKendalaList.length > 0) {
+    lines.push(``);
+    lines.push(`*⚠️ DAFTAR KENDALA & ISU LAPANGAN (${allKendalaList.length} Isu):*`);
+    lines.push(`Berikut kendala lapangan yang membutuhkan koordinasi / tindak lanjut:`);
+    lines.push(``);
+    allKendalaList.forEach((item, idx) => {
+      lines.push(`${idx + 1}. *[${item.area} • ${item.waspang}]*`);
+      lines.push(`   ↳ _"${item.notes}"_`);
+    });
+    lines.push(``);
+    lines.push(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+  } else {
+    lines.push(``);
+    lines.push(`*✅ EVALUASI KENDALA:*`);
+    lines.push(`Seluruh pekerjaan sipil & penarikan kabel berjalan aman dan sesuai rencana.`);
+    lines.push(``);
+    lines.push(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+  }
+
+  // 4. FOOTER & INSTRUCTIONS
+  lines.push(`📌 *CATATAN PMO MS CKT:*`);
+  lines.push(`1. Data diatas dihimpun otomatis dari sistem pelaporan harian resmi.`);
+  lines.push(`2. Mohon Waspang terkait segera memperbarui progres harian secara berkala.`);
+  lines.push(``);
+  lines.push(`_GovMonitor Admin System • PT Link Net & PMO MS CKT_`);
+  lines.push(`_Dokumen Resmi Terverifikasi_`);
+
+  return lines.join('\n');
+}
+
+export function shareWeeklyRecapToWhatsApp(data: WeeklyRecapData, targetPhone?: string): void {
+  const text = generateWeeklyAdminWhatsAppText(data);
+  const encodedText = encodeURIComponent(text);
+
+  let url = `https://api.whatsapp.com/send?text=${encodedText}`;
+
+  if (targetPhone && targetPhone.trim()) {
+    let cleaned = targetPhone.replace(/[^0-9]/g, '');
+    if (cleaned.startsWith('0')) {
+      cleaned = '62' + cleaned.slice(1);
+    } else if (!cleaned.startsWith('62')) {
+      cleaned = '62' + cleaned;
+    }
+    url = `https://api.whatsapp.com/send?phone=${cleaned}&text=${encodedText}`;
+  }
+
+  const link = document.createElement('a');
+  link.href = url;
+  link.target = '_blank';
+  link.rel = 'noopener noreferrer';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}

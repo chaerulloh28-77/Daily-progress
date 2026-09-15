@@ -1,6 +1,6 @@
 {
   "name": "Monitoring Harian GOV",
-  "description": "Aplikasi mobile-first monitoring harian project jaringan fiber optic, sipil, dan penarikan kabel.",
+  "description": "Aplikasi mobile-first monitoring harian project jaringan fiber optic, boring akses, sipil, penarikan kabel, dan Admin Dashboard Rekap Mingguan per Area & Waspang.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

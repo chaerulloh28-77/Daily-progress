@@ -7,6 +7,7 @@ import { SavedReportsDrawer } from './components/SavedReportsDrawer';
 import { ClearScreenModal } from './components/ClearScreenModal';
 import { MobileInstallBanner } from './components/MobileInstallBanner';
 import { BackgroundStatusBanner } from './components/BackgroundStatusBanner';
+import { AdminWeeklyRecap } from './components/AdminWeeklyRecap';
 import { DailyReportFormData, ProjectItem, CurrentUser, UserRole } from './types';
 import { INITIAL_REPORT_DATA, ACTIVE_PROJECTS, PROJECT_RELOKASI_GOVERNMENT } from './data';
 import { CheckCircle } from 'lucide-react';
@@ -105,10 +106,19 @@ export default function App() {
   });
 
   // Modals & Drawers state
+  const isSuperAdmin = currentUser.email?.trim().toLowerCase() === 'admin@gov.com';
+  const [activeTab, setActiveTab] = useState<'input' | 'admin'>('input');
   const [activeReportModal, setActiveReportModal] = useState<DailyReportFormData | null>(null);
   const [isHistoryDrawerOpen, setIsHistoryDrawerOpen] = useState(false);
   const [isClearScreenModalOpen, setIsClearScreenModalOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  // Pastikan non-admin@gov.com tidak berada di tab admin
+  useEffect(() => {
+    if (!isSuperAdmin && activeTab === 'admin') {
+      setActiveTab('input');
+    }
+  }, [isSuperAdmin, activeTab]);
 
   // Sync projects to local storage
   useEffect(() => {
@@ -630,27 +640,40 @@ export default function App() {
             savedReportsCount={savedReports.length}
             onOpenHistory={() => setIsHistoryDrawerOpen(true)}
             onOpenClearScreen={() => setIsClearScreenModalOpen(true)}
+            activeTab={activeTab}
+            onTabChange={setActiveTab}
           />
 
-          {/* Body Content / Form */}
+          {/* Body Content / Form or Admin Rekap */}
           <main className="flex-1 px-3 sm:px-5 pt-2 pb-8">
             <MobileInstallBanner />
             <BackgroundStatusBanner />
             
-            <DailyReportForm
-              formData={formData}
-              onChange={setFormData}
-              onSubmit={handleFormSubmit}
-              projects={projects}
-              onOpenClearScreen={() => setIsClearScreenModalOpen(true)}
-              isEditing={!!editingReportId}
-              onCancelEdit={handleCancelEdit}
-              onDeleteCurrentReport={() => {
-                if (editingReportId) {
-                  handleDeleteReport(editingReportId);
-                }
-              }}
-            />
+            {activeTab === 'admin' && isSuperAdmin ? (
+              <AdminWeeklyRecap
+                savedReports={savedReports}
+                currentUser={currentUser}
+                onSelectReport={(report) => {
+                  setActiveReportModal(report);
+                }}
+                onBackToForm={() => setActiveTab('input')}
+              />
+            ) : (
+              <DailyReportForm
+                formData={formData}
+                onChange={setFormData}
+                onSubmit={handleFormSubmit}
+                projects={projects}
+                onOpenClearScreen={() => setIsClearScreenModalOpen(true)}
+                isEditing={!!editingReportId}
+                onCancelEdit={handleCancelEdit}
+                onDeleteCurrentReport={() => {
+                  if (editingReportId) {
+                    handleDeleteReport(editingReportId);
+                  }
+                }}
+              />
+            )}
           </main>
 
           {/* Modal Recap / Success Preview with WhatsApp Sharing, Edit & Delete */}

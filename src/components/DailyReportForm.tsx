@@ -35,7 +35,17 @@ import {
   Wrench,
   FileText
 } from 'lucide-react';
-import { DailyReportFormData, ProjectItem, ProjectCategory, JenisPengamanan, SubJenisPerapihanAsset } from '../types';
+import { 
+  DailyReportFormData, 
+  ProjectItem, 
+  ProjectCategory, 
+  JenisPengamanan, 
+  SubJenisPerapihanAsset,
+  PullingProgress,
+  HHProgress,
+  HBProgress,
+  MHProgress
+} from '../types';
 import { 
   WEATHER_OPTIONS, 
   AREA_OPTIONS, 
@@ -100,6 +110,26 @@ interface DailyReportFormProps {
   onDeleteCurrentReport?: () => void;
 }
 
+const FO_CABLE_OPTIONS: { key: keyof PullingProgress; label: string }[] = [
+  { key: 'pulling288', label: '288' },
+  { key: 'pulling288GL', label: '288 GL' },
+  { key: 'pulling144', label: '144' },
+  { key: 'pulling144GL', label: '144 GL' },
+  { key: 'pulling96', label: '96' },
+  { key: 'pulling96GL', label: '96 GL' },
+  { key: 'pulling48', label: '48' },
+  { key: 'pulling24', label: '24' },
+  { key: 'pulling12', label: '12' },
+];
+
+const PIT_SIZE_OPTIONS = [
+  { id: '60x60', label: '60x60' },
+  { id: '80x80', label: '80x80' },
+  { id: '100x100', label: '100x100' },
+  { id: '110x110', label: '110x110' },
+  { id: '120x120', label: '120x120' },
+] as const;
+
 export const DailyReportForm: React.FC<DailyReportFormProps> = ({
   formData,
   onChange,
@@ -111,6 +141,12 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
   onCancelEdit,
   onDeleteCurrentReport,
 }) => {
+  // Local state for Remarks Pengamanan options selector
+  const [selectedRemarksFO, setSelectedRemarksFO] = useState<keyof PullingProgress>('pulling96');
+  const [selectedRemarksHH, setSelectedRemarksHH] = useState<keyof HHProgress>('hh80x80');
+  const [selectedRemarksHB, setSelectedRemarksHB] = useState<keyof HBProgress>('hb80x80');
+  const [selectedRemarksMH, setSelectedRemarksMH] = useState<keyof MHProgress>('mh80x80');
+
   // Accordion toggle states
   const [openAccordions, setOpenAccordions] = useState<{ [key: string]: boolean }>({
     boring: true,
@@ -163,6 +199,7 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
     (parseFloat(formData.instalasiHB.hb120x120) || 0);
 
   const totalMH = 
+    (parseFloat(formData.instalasiMH.mh60x60 || '0') || 0) +
     (parseFloat(formData.instalasiMH.mh80x80) || 0) +
     (parseFloat(formData.instalasiMH.mh100x100) || 0) +
     (parseFloat(formData.instalasiMH.mh110x110 || '0') || 0) +
@@ -184,10 +221,12 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
     (parseFloat(formData.pulling.pulling288) || 0) +
     (parseFloat(formData.pulling.pulling288GL) || 0) +
     (parseFloat(formData.pulling.pulling144) || 0) +
+    (parseFloat(formData.pulling.pulling144GL || '0') || 0) +
     (parseFloat(formData.pulling.pulling96) || 0) +
     (parseFloat(formData.pulling.pulling96GL) || 0) +
     (parseFloat(formData.pulling.pulling48) || 0) +
-    (parseFloat(formData.pulling.pulling24) || 0);
+    (parseFloat(formData.pulling.pulling24) || 0) +
+    (parseFloat(formData.pulling.pulling12 || '0') || 0);
 
   const totalPullingCoaxMeters = parseFloat(formData.pulling?.pullingCoax || '0') || 0;
 
@@ -358,10 +397,12 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
         (parseFloat(newPulling.pulling288) || 0) +
         (parseFloat(newPulling.pulling288GL) || 0) +
         (parseFloat(newPulling.pulling144) || 0) +
+        (parseFloat(newPulling.pulling144GL || '0') || 0) +
         (parseFloat(newPulling.pulling96) || 0) +
         (parseFloat(newPulling.pulling96GL) || 0) +
         (parseFloat(newPulling.pulling48) || 0) +
-        (parseFloat(newPulling.pulling24) || 0);
+        (parseFloat(newPulling.pulling24) || 0) +
+        (parseFloat(newPulling.pulling12 || '0') || 0);
 
       const newCoaxTotal = parseFloat(newPulling.pullingCoax || '0') || 0;
 
@@ -423,6 +464,7 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
         [subField]: value,
       };
       const newMHTotal =
+        (parseFloat(newMH.mh60x60 || '0') || 0) +
         (parseFloat(newMH.mh80x80) || 0) +
         (parseFloat(newMH.mh100x100) || 0) +
         (parseFloat(newMH.mh110x110 || '0') || 0) +
@@ -458,20 +500,23 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
     });
   };
 
-  // 1. Identitas Project & Jadwal Pelaksanaan (Card Statis di Bagian Atas)
+  // 1. Identitas Project & Jadwal Pelaksanaan (Khusus Kategori Relokasi Goverment)
   const renderIdentitasProject = () => {
     const dateDiffInfo = calculateDaysDiff(formData.reportDate, formData.startDate);
     const isDateBeforeStart = dateDiffInfo ? dateDiffInfo.isNegative : false;
     const isHariKeSynced = dateDiffInfo ? formData.dayNumber === dateDiffInfo.days.toString() : false;
 
     return (
-      <div className="bg-[#091224] border border-cyan-500/30 rounded-2xl p-4 sm:p-5 mb-5 shadow-xl shadow-cyan-950/20 space-y-4">
+      <div className="bg-[#091224] border border-emerald-500/30 rounded-2xl p-4 sm:p-5 mb-5 shadow-xl shadow-emerald-950/20 space-y-4">
         <div className="flex items-center justify-between pb-3 border-b border-slate-800">
           <div className="flex items-center gap-2">
-            <Building2 className="w-4 h-4 text-cyan-400" />
+            <Building2 className="w-4 h-4 text-emerald-400" />
             <h2 className="font-cyber font-bold text-sm tracking-wide text-white uppercase">
               Identitas Project & Jadwal Pelaksanaan
             </h2>
+            <span className="text-[10px] font-mono-cyber text-emerald-300 bg-emerald-950/80 px-2 py-0.5 rounded border border-emerald-500/30 font-semibold">
+              Relokasi Goverment
+            </span>
           </div>
           <div className="flex items-center gap-2">
             {onOpenClearScreen && (
@@ -801,6 +846,184 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
     );
   };
 
+  // 1. Informasi Titik & Pelaksanaan Pengamanan (Khusus Kategori Pengamanan)
+  const renderInformasiPengamanan = () => {
+    return (
+      <div className="bg-[#091224] border border-amber-500/30 rounded-2xl p-4 sm:p-5 mb-5 shadow-xl shadow-amber-950/20 space-y-4">
+        <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+          <div className="flex items-center gap-2">
+            <Shield className="w-4 h-4 text-amber-400" />
+            <h2 className="font-cyber font-bold text-sm tracking-wide text-white uppercase">
+              Informasi Titik & Pelaksanaan Pengamanan
+            </h2>
+            <span className="text-[10px] font-mono-cyber text-amber-300 bg-amber-950/80 px-2 py-0.5 rounded border border-amber-500/30 font-semibold">
+              Kategori Pengamanan
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            {onOpenClearScreen && (
+              <button
+                type="button"
+                onClick={onOpenClearScreen}
+                className="inline-flex items-center gap-1 text-[11px] font-mono-cyber px-2.5 py-1 rounded-lg bg-amber-950/80 text-amber-300 border border-amber-500/40 hover:bg-amber-900/80 transition-colors cursor-pointer font-semibold shadow-sm"
+                title="Bersihkan layar untuk input daily progress baru"
+              >
+                <Eraser className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                <span>Clear Screen</span>
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Input Nama Titik/Ruas Pengamanan, Area, Waspang, Tanggal, Cuaca */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
+          {/* Nama Titik/Ruas Pengamanan */}
+          <div className="sm:col-span-2 lg:col-span-1">
+            <div className="flex items-center justify-between mb-1.5 h-5">
+              <label 
+                htmlFor="input-pengamanan-name" 
+                className="flex items-center gap-1.5 text-xs font-mono-cyber text-amber-300 uppercase tracking-wider font-semibold truncate"
+              >
+                <Building2 className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                <span className="truncate">Nama Titik / Ruas Pengamanan <span className="text-amber-400">*</span></span>
+              </label>
+            </div>
+            <div className="relative">
+              <input
+                id="input-pengamanan-name"
+                type="text"
+                required
+                value={formData.projectName}
+                onChange={(e) => handleTopLevelChange('projectName', e.target.value)}
+                placeholder="Contoh: Pengamanan Utilitas Jl. Margonda / Trotoar..."
+                className="w-full h-10 bg-[#050b14] border border-amber-500/40 focus:border-amber-400 rounded-xl px-3.5 text-xs sm:text-sm text-slate-100 font-mono-cyber focus:outline-none focus:ring-1 focus:ring-amber-400 transition-colors"
+              />
+            </div>
+          </div>
+
+          {/* Area */}
+          <div>
+            <div className="flex items-center justify-between mb-1.5 h-5">
+              <label 
+                htmlFor="select-area-pengamanan" 
+                className="flex items-center gap-1.5 text-xs font-mono-cyber text-amber-300 uppercase tracking-wider font-semibold truncate"
+              >
+                <MapPin className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                <span className="truncate">Area <span className="text-amber-400">*</span></span>
+              </label>
+              {formData.area && (
+                <span className="text-[10px] font-mono-cyber text-indigo-300 bg-indigo-950/80 border border-indigo-500/40 px-1.5 py-0.2 rounded shrink-0 font-bold">
+                  {formData.area}
+                </span>
+              )}
+            </div>
+            <div className="relative flex items-center">
+              <select
+                id="select-area-pengamanan"
+                value={formData.area || 'Jabo 1'}
+                onChange={(e) => handleTopLevelChange('area', e.target.value)}
+                className="w-full h-10 appearance-none bg-[#050b14] border border-amber-500/40 focus:border-amber-400 rounded-xl px-3.5 text-xs sm:text-sm text-slate-100 font-mono-cyber font-semibold focus:outline-none focus:ring-1 focus:ring-amber-400 pr-9 cursor-pointer transition-colors"
+              >
+                {AREA_OPTIONS.map((opt) => (
+                  <option key={opt} value={opt} className="bg-[#050b14] text-white">
+                    {opt}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="w-4 h-4 text-amber-400 absolute right-3 pointer-events-none" />
+            </div>
+          </div>
+
+          {/* Waspang */}
+          <div>
+            <div className="flex items-center justify-between mb-1.5 h-5">
+              <label 
+                htmlFor="input-waspang-pengamanan" 
+                className="flex items-center gap-1.5 text-xs font-mono-cyber text-amber-300 uppercase tracking-wider font-semibold truncate"
+              >
+                <UserCheck className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                <span className="truncate">Waspang (Pengawas)</span>
+              </label>
+            </div>
+            <div className="relative">
+              <input
+                id="input-waspang-pengamanan"
+                type="text"
+                value={formData.waspangName || ''}
+                onChange={(e) => handleTopLevelChange('waspangName', e.target.value)}
+                placeholder="Nama waspang / pengawas..."
+                className="w-full h-10 bg-[#050b14] border border-amber-500/40 focus:border-amber-400 rounded-xl px-3.5 text-xs sm:text-sm text-slate-100 font-mono-cyber focus:outline-none focus:ring-1 focus:ring-amber-400 transition-colors"
+              />
+            </div>
+          </div>
+
+          {/* Tanggal Pelaksanaan Pengamanan */}
+          <div className="flex flex-col">
+            <label 
+              htmlFor="input-report-date-pengamanan" 
+              className="h-5 flex items-center gap-1.5 text-xs font-mono-cyber text-slate-300 uppercase tracking-wider mb-1.5"
+            >
+              <Calendar className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+              <span className="truncate">Tanggal Pelaksanaan</span>
+            </label>
+            <input
+              id="input-report-date-pengamanan"
+              type="date"
+              value={formData.reportDate}
+              onChange={(e) => handleTopLevelChange('reportDate', e.target.value)}
+              className="w-full h-10 bg-[#050b14] border border-slate-700/80 focus:border-amber-400 rounded-xl px-3 text-xs sm:text-sm text-slate-100 font-mono-cyber focus:outline-none focus:ring-1 focus:ring-amber-400 transition-colors"
+            />
+          </div>
+
+          {/* Tanggal Selesai (Format Kalender) */}
+          <div className="flex flex-col">
+            <label 
+              htmlFor="input-end-date-pengamanan" 
+              className="h-5 flex items-center gap-1.5 text-xs font-mono-cyber text-slate-300 uppercase tracking-wider mb-1.5"
+            >
+              <Calendar className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+              <span className="truncate">Tanggal Selesai</span>
+            </label>
+            <input
+              id="input-end-date-pengamanan"
+              type="date"
+              value={formData.endDate || ''}
+              min={formData.reportDate}
+              onChange={(e) => handleTopLevelChange('endDate', e.target.value)}
+              className="w-full h-10 bg-[#050b14] border border-slate-700/80 focus:border-amber-400 rounded-xl px-3 text-xs sm:text-sm text-slate-100 font-mono-cyber focus:outline-none focus:ring-1 focus:ring-amber-400 transition-colors"
+            />
+          </div>
+
+          {/* Kondisi Cuaca */}
+          <div className="flex flex-col sm:col-span-2 lg:col-span-1">
+            <label 
+              htmlFor="select-weather-pengamanan" 
+              className="h-5 flex items-center gap-1.5 text-xs font-mono-cyber text-slate-300 uppercase tracking-wider mb-1.5"
+            >
+              <CloudSun className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+              <span className="truncate">Kondisi Cuaca</span>
+            </label>
+            <div className="relative flex items-center">
+              <select
+                id="select-weather-pengamanan"
+                value={formData.weatherCondition}
+                onChange={(e) => handleTopLevelChange('weatherCondition', e.target.value)}
+                className="w-full h-10 appearance-none bg-[#050b14] border border-slate-700/80 focus:border-amber-400 rounded-xl px-3 text-xs sm:text-sm text-slate-100 font-mono-cyber focus:outline-none focus:ring-1 focus:ring-amber-400 pr-9 cursor-pointer transition-colors"
+              >
+                {WEATHER_OPTIONS.map((opt) => (
+                  <option key={opt} value={opt}>
+                    {opt}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3 pointer-events-none" />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.projectName || !formData.projectName.trim()) {
@@ -902,12 +1125,7 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
       )}
 
       {/* ========================================================================= */}
-      {/* 1. IDENTITAS PROJECT & JADWAL PELAKSANAAN (CARD INFORMASI DASAR) */}
-      {/* ========================================================================= */}
-      {renderIdentitasProject()}
-
-      {/* ========================================================================= */}
-      {/* KATEGORI PROJECT (RELOKASI GOVERMENT / PENGAMANAN) */}
+      {/* 1. KATEGORI PROJECT (PILIHAN UTAMA) */}
       {/* ========================================================================= */}
       <div 
         id="section-kategori-project" 
@@ -959,6 +1177,12 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
                 onChange({
                   ...formData,
                   projectCategory: 'Pengamanan',
+                  totalProgressSipil: 0,
+                  totalProgressKabel: 0,
+                  totalProgressKabelCoax: 0,
+                  totalProgressHH: '0',
+                  totalProgressHB: '0',
+                  totalProgressMH: '0',
                   ...(formData.projectName?.trim().toLowerCase() === 'pengamanan' ? { projectName: '' } : {}),
                 });
               }}
@@ -974,9 +1198,14 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
           </div>
         </div>
 
-        {/* Panel Opsi Jenis Pengamanan (Muncul saat Kategori = Pengamanan) */}
+        {/* Panel Opsi Jenis Pengamanan & Informasi Pengamanan (Muncul saat Kategori = Pengamanan) */}
         {formData.projectCategory === 'Pengamanan' && (
-          <div className="p-4 rounded-2xl bg-gradient-to-br from-[#0c1424] to-[#080d19] border border-amber-500/50 shadow-xl shadow-amber-950/20 space-y-4 animate-fadeIn">
+          <div className="space-y-4">
+            {/* Informasi Titik & Pelaksanaan Pengamanan */}
+            {renderInformasiPengamanan()}
+
+            {/* Panel Opsi Jenis Pengamanan */}
+            <div className="p-4 rounded-2xl bg-gradient-to-br from-[#0c1424] to-[#080d19] border border-amber-500/50 shadow-xl shadow-amber-950/20 space-y-4 animate-fadeIn">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2.5 border-b border-amber-500/20">
               <div className="flex items-center gap-2.5">
                 <div className="w-7 h-7 rounded-lg bg-amber-500/20 border border-amber-400/60 flex items-center justify-center shrink-0">
@@ -1128,13 +1357,25 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
               />
             </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
+    </div>
 
       {/* ========================================================================= */}
-      {/* RINGKASAN CAPAIAN HARIAN (KEY TOTALS) */}
+      {/* SEKSI KHUSUS RELOKASI GOVERMENT: IDENTITAS PROJECT, JADWAL & PROGRES */}
+      {/* (Dihapus/Disembunyikan pada Kategori Project Pengamanan) */}
       {/* ========================================================================= */}
-      <div id="section-key-totals" className="bg-[#091224] border border-cyan-500/30 rounded-2xl p-4 sm:p-5 mb-5 shadow-xl shadow-cyan-950/20 scroll-mt-24 transition-all space-y-4">
+      {formData.projectCategory !== 'Pengamanan' && (
+        <>
+          {/* ========================================================================= */}
+          {/* 1. IDENTITAS PROJECT & JADWAL PELAKSANAAN (DALAM RELOKASI GOVERMENT) */}
+          {/* ========================================================================= */}
+          {renderIdentitasProject()}
+
+          {/* ========================================================================= */}
+          {/* 2. RINGKASAN CAPAIAN HARIAN (KEY TOTALS) */}
+          {/* ========================================================================= */}
+          <div id="section-key-totals" className="bg-[#091224] border border-cyan-500/30 rounded-2xl p-4 sm:p-5 mb-5 shadow-xl shadow-cyan-950/20 scroll-mt-24 transition-all space-y-4">
         <div className="pt-1">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2.5">
             <div>
@@ -1610,6 +1851,30 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
 
             <div className="flex flex-col">
               <label 
+                htmlFor="input-pulling-144gl" 
+                className="h-5 flex items-center text-xs font-mono-cyber text-slate-300 mb-1.5 truncate"
+              >
+                Pulling Kabel 144 GL
+              </label>
+              <div className="relative flex items-center h-10">
+                <input
+                  id="input-pulling-144gl"
+                  type="number"
+                  step="any"
+                  min="0"
+                  value={formData.pulling.pulling144GL || ''}
+                  onChange={(e) => handleNestedChange('pulling', 'pulling144GL', e.target.value)}
+                  placeholder="0"
+                  className="w-full h-10 bg-[#050b14] border border-slate-700/80 focus:border-emerald-400 rounded-xl pl-3 pr-10 text-xs sm:text-sm font-mono-cyber text-white focus:outline-none focus:ring-1 focus:ring-emerald-400 transition-colors"
+                />
+                <span className="absolute right-3 text-xs font-mono-cyber text-slate-400 pointer-events-none">
+                  m
+                </span>
+              </div>
+            </div>
+
+            <div className="flex flex-col">
+              <label 
                 htmlFor="input-pulling-96" 
                 className="h-5 flex items-center text-xs font-mono-cyber text-slate-300 mb-1.5 truncate"
               >
@@ -1695,6 +1960,30 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
                   min="0"
                   value={formData.pulling.pulling24}
                   onChange={(e) => handleNestedChange('pulling', 'pulling24', e.target.value)}
+                  placeholder="0"
+                  className="w-full h-10 bg-[#050b14] border border-slate-700/80 focus:border-emerald-400 rounded-xl pl-3 pr-10 text-xs sm:text-sm font-mono-cyber text-white focus:outline-none focus:ring-1 focus:ring-emerald-400 transition-colors"
+                />
+                <span className="absolute right-3 text-xs font-mono-cyber text-slate-400 pointer-events-none">
+                  m
+                </span>
+              </div>
+            </div>
+
+            <div className="flex flex-col">
+              <label 
+                htmlFor="input-pulling-12" 
+                className="h-5 flex items-center text-xs font-mono-cyber text-slate-300 mb-1.5 truncate"
+              >
+                Pulling Kabel 12
+              </label>
+              <div className="relative flex items-center h-10">
+                <input
+                  id="input-pulling-12"
+                  type="number"
+                  step="any"
+                  min="0"
+                  value={formData.pulling.pulling12 || ''}
+                  onChange={(e) => handleNestedChange('pulling', 'pulling12', e.target.value)}
                   placeholder="0"
                   className="w-full h-10 bg-[#050b14] border border-slate-700/80 focus:border-emerald-400 rounded-xl pl-3 pr-10 text-xs sm:text-sm font-mono-cyber text-white focus:outline-none focus:ring-1 focus:ring-emerald-400 transition-colors"
                 />
@@ -1937,13 +2226,13 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
               </div>
             </div>
 
-            {/* Sub-kategori 3: Instalasi MH (Manhole 80x80 s/d 120x120) */}
+            {/* Sub-kategori 3: Instalasi MH (Manhole 60x60 s/d 120x120) */}
             <div className="p-3 rounded-xl bg-[#060c18] border border-slate-800">
               <div className="flex items-center justify-between mb-2.5 pb-2 border-b border-slate-800/80">
                 <div className="flex items-center gap-1.5">
                   <span className="w-2 h-2 rounded-full bg-amber-400" />
                   <span className="text-xs font-cyber font-bold text-white uppercase">
-                    3) Instalasi MH (80x80 s/d 120x120)
+                    3) Instalasi MH (60x60 s/d 120x120)
                   </span>
                 </div>
                 {/* Tampilkan Total Pcs */}
@@ -1952,7 +2241,21 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
+                <div className="flex flex-col">
+                  <label htmlFor="input-mh-60" className="h-4 flex items-center text-[11px] font-mono-cyber text-slate-400 mb-1">
+                    MH 60x60
+                  </label>
+                  <input
+                    id="input-mh-60"
+                    type="number"
+                    min="0"
+                    value={formData.instalasiMH.mh60x60 || ''}
+                    onChange={(e) => handleNestedChange('instalasiMH', 'mh60x60', e.target.value)}
+                    placeholder="0"
+                    className="w-full h-9 bg-[#091224] border border-slate-700/80 focus:border-amber-400 rounded-lg px-2.5 text-xs font-mono-cyber text-white focus:outline-none focus:ring-1 focus:ring-amber-400 transition-colors"
+                  />
+                </div>
                 <div className="flex flex-col">
                   <label htmlFor="input-mh-80" className="h-4 flex items-center text-[11px] font-mono-cyber text-slate-400 mb-1">
                     MH 80x80
@@ -2281,6 +2584,8 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
           </div>
         </AccordionSection>
       </div>
+    </>
+  )}
 
       {/* ========================================================================= */}
       {/* REMARKS (CATATAN KHUSUS LAPANGAN) */}
@@ -2294,31 +2599,495 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
             </h3>
           </div>
           <span className="text-[10px] font-mono-cyber text-purple-300 bg-purple-950/80 px-2 py-0.5 rounded border border-purple-500/30 font-medium">
-            Catatan Khusus Lapangan
+            {formData.projectCategory === 'Pengamanan' ? 'Catatan & Rincian Item Pengamanan' : 'Catatan Khusus Lapangan'}
           </span>
         </div>
+
+        {/* ========================================================================= */}
+        {/* KHUSUS PENGAMANAN: INPUT ITEM DIDALAM REMARKS */}
+        {/* ========================================================================= */}
+        {formData.projectCategory === 'Pengamanan' && (
+          <div className="bg-[#050b14]/90 border border-amber-500/40 rounded-xl p-3.5 sm:p-4 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2.5 border-b border-slate-800/80">
+              <div className="flex items-center gap-2">
+                <Shield className="w-4 h-4 text-amber-400 shrink-0" />
+                <span className="text-xs font-cyber font-bold text-amber-300 uppercase tracking-wide">
+                  Item Pekerjaan Pengamanan (Didalam Remarks)
+                </span>
+              </div>
+              <span className="text-[10px] font-mono-cyber text-slate-400">
+                Isi nilai item bila ada aktivitas terkait di lapangan
+              </span>
+            </div>
+
+            {/* 1. Penarikan Kabel / Pulling (Meter) */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-[11px] font-mono-cyber text-emerald-300 font-semibold flex items-center gap-1.5">
+                  <Cable className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>1. Penarikan Kabel / Pulling (Meter)</span>
+                </label>
+                <span className="text-[10px] font-mono-cyber text-slate-400">
+                  Total FO: <strong className="text-emerald-300">{formData.totalProgressKabel || '0'} m</strong>
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                {/* Kabel Fiber Optic (FO) dengan option pilihan */}
+                <div className="p-2.5 rounded-xl bg-[#08101e] border border-emerald-500/30 space-y-1.5">
+                  <div className="flex items-center justify-between gap-1">
+                    <label htmlFor="select-remarks-fo" className="text-[10px] font-mono-cyber text-emerald-300 font-semibold">
+                      Kabel Fiber Optic (FO):
+                    </label>
+                    <select
+                      id="select-remarks-fo"
+                      value={selectedRemarksFO}
+                      onChange={(e) => setSelectedRemarksFO(e.target.value as keyof PullingProgress)}
+                      className="h-6 text-[11px] font-mono-cyber bg-[#050b14] border border-emerald-500/50 text-emerald-300 rounded-lg px-2 focus:outline-none focus:ring-1 focus:ring-emerald-400 cursor-pointer"
+                    >
+                      {FO_CABLE_OPTIONS.map((opt) => (
+                        <option key={opt.key} value={opt.key}>
+                          FO {opt.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="relative">
+                    <input
+                      id="input-remarks-fo-val"
+                      type="number"
+                      step="any"
+                      min="0"
+                      value={formData.pulling[selectedRemarksFO] || ''}
+                      onChange={(e) => handleNestedChange('pulling', selectedRemarksFO, e.target.value)}
+                      placeholder={`0 meter (${FO_CABLE_OPTIONS.find(o => o.key === selectedRemarksFO)?.label})`}
+                      className="w-full h-9 bg-[#050b14] border border-slate-700/80 focus:border-emerald-400 rounded-lg pl-3 pr-12 text-xs font-mono-cyber text-white focus:outline-none focus:ring-1 focus:ring-emerald-400"
+                    />
+                    <span className="absolute right-3 top-2 text-[10px] font-mono-cyber text-slate-400 pointer-events-none">Meter</span>
+                  </div>
+
+                  {/* Chips daftar tipe kabel FO yang terisi > 0 */}
+                  {FO_CABLE_OPTIONS.some((opt) => parseFloat(formData.pulling[opt.key] || '0') > 0) && (
+                    <div className="flex items-center gap-1 flex-wrap pt-0.5">
+                      <span className="text-[9px] font-mono-cyber text-slate-400">Terisi:</span>
+                      {FO_CABLE_OPTIONS.filter((opt) => parseFloat(formData.pulling[opt.key] || '0') > 0).map((opt) => (
+                        <button
+                          key={opt.key}
+                          type="button"
+                          onClick={() => setSelectedRemarksFO(opt.key)}
+                          className={`text-[9px] font-mono-cyber px-1.5 py-0.5 rounded border transition-colors cursor-pointer ${
+                            selectedRemarksFO === opt.key
+                              ? 'bg-emerald-950 border-emerald-400 text-emerald-300 font-bold'
+                              : 'bg-[#050b14] border-slate-700 text-slate-300 hover:border-emerald-500/50'
+                          }`}
+                        >
+                          {opt.label}: {formData.pulling[opt.key]}m
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Kabel Coaxial */}
+                <div className="p-2.5 rounded-xl bg-[#08101e] border border-blue-500/30 space-y-1.5">
+                  <div className="flex items-center justify-between gap-1 h-6">
+                    <label htmlFor="input-remarks-coax" className="text-[10px] font-mono-cyber text-blue-300 font-semibold">
+                      Kabel Coaxial:
+                    </label>
+                    <span className="text-[9px] font-mono-cyber text-blue-400/80">Coax Cable</span>
+                  </div>
+                  <div className="relative">
+                    <input
+                      id="input-remarks-coax"
+                      type="number"
+                      step="any"
+                      min="0"
+                      value={formData.pulling?.pullingCoax || ''}
+                      onChange={(e) => handleNestedChange('pulling', 'pullingCoax', e.target.value)}
+                      placeholder="0"
+                      className="w-full h-9 bg-[#050b14] border border-slate-700/80 focus:border-blue-400 rounded-lg pl-3 pr-12 text-xs font-mono-cyber text-white focus:outline-none focus:ring-1 focus:ring-blue-400"
+                    />
+                    <span className="absolute right-3 top-2 text-[10px] font-mono-cyber text-slate-400 pointer-events-none">Meter</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* 2. Instalasi Pit: HH, HB, MH (Pcs) dengan option ukuran */}
+            <div className="space-y-2 pt-2 border-t border-slate-800/60">
+              <div className="flex items-center justify-between">
+                <label className="text-[11px] font-mono-cyber text-amber-300 font-semibold flex items-center gap-1.5">
+                  <Boxes className="w-3.5 h-3.5 text-amber-400" />
+                  <span>2. Instalasi Pit: HH, HB, MH (Pcs)</span>
+                </label>
+                <span className="text-[10px] font-mono-cyber text-slate-400">
+                  Total Pit: <strong className="text-amber-300">{totalHH + totalHB + totalMH} Pcs</strong>
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                {/* Handhole (HH) */}
+                <div className="p-2.5 rounded-xl bg-[#08101e] border border-amber-500/30 space-y-1.5">
+                  <div className="flex items-center justify-between gap-1">
+                    <label htmlFor="select-remarks-hh" className="text-[10px] font-mono-cyber text-amber-300 font-semibold">
+                      Handhole (HH):
+                    </label>
+                    <select
+                      id="select-remarks-hh"
+                      value={selectedRemarksHH}
+                      onChange={(e) => setSelectedRemarksHH(e.target.value as keyof HHProgress)}
+                      className="h-6 text-[11px] font-mono-cyber bg-[#050b14] border border-amber-500/50 text-amber-300 rounded-lg px-2 focus:outline-none focus:ring-1 focus:ring-amber-400 cursor-pointer"
+                    >
+                      {PIT_SIZE_OPTIONS.map((opt) => (
+                        <option key={opt.id} value={`hh${opt.id}`}>
+                          {opt.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="relative">
+                    <input
+                      id="input-remarks-hh-val"
+                      type="number"
+                      min="0"
+                      value={formData.instalasiHH[selectedRemarksHH] || ''}
+                      onChange={(e) => handleNestedChange('instalasiHH', selectedRemarksHH, e.target.value)}
+                      placeholder="0"
+                      className="w-full h-9 bg-[#050b14] border border-slate-700/80 focus:border-amber-400 rounded-lg pl-2.5 pr-10 text-xs font-mono-cyber text-white focus:outline-none focus:ring-1 focus:ring-amber-400"
+                    />
+                    <span className="absolute right-2.5 top-2 text-[10px] font-mono-cyber text-slate-400 pointer-events-none">Pcs</span>
+                  </div>
+
+                  {/* Chips ukuran HH terisi */}
+                  {PIT_SIZE_OPTIONS.some((opt) => parseFloat(formData.instalasiHH[`hh${opt.id}` as keyof HHProgress] || '0') > 0) && (
+                    <div className="flex items-center gap-1 flex-wrap pt-0.5">
+                      {PIT_SIZE_OPTIONS.filter((opt) => parseFloat(formData.instalasiHH[`hh${opt.id}` as keyof HHProgress] || '0') > 0).map((opt) => (
+                        <button
+                          key={opt.id}
+                          type="button"
+                          onClick={() => setSelectedRemarksHH(`hh${opt.id}` as keyof HHProgress)}
+                          className={`text-[9px] font-mono-cyber px-1.5 py-0.5 rounded border transition-colors cursor-pointer ${
+                            selectedRemarksHH === `hh${opt.id}`
+                              ? 'bg-amber-950 border-amber-400 text-amber-300 font-bold'
+                              : 'bg-[#050b14] border-slate-700 text-slate-300 hover:border-amber-500/50'
+                          }`}
+                        >
+                          {opt.label}: {formData.instalasiHH[`hh${opt.id}` as keyof HHProgress]}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Handbox (HB) */}
+                <div className="p-2.5 rounded-xl bg-[#08101e] border border-orange-500/30 space-y-1.5">
+                  <div className="flex items-center justify-between gap-1">
+                    <label htmlFor="select-remarks-hb" className="text-[10px] font-mono-cyber text-orange-300 font-semibold">
+                      Handbox (HB):
+                    </label>
+                    <select
+                      id="select-remarks-hb"
+                      value={selectedRemarksHB}
+                      onChange={(e) => setSelectedRemarksHB(e.target.value as keyof HBProgress)}
+                      className="h-6 text-[11px] font-mono-cyber bg-[#050b14] border border-orange-500/50 text-orange-300 rounded-lg px-2 focus:outline-none focus:ring-1 focus:ring-orange-400 cursor-pointer"
+                    >
+                      {PIT_SIZE_OPTIONS.map((opt) => (
+                        <option key={opt.id} value={`hb${opt.id}`}>
+                          {opt.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="relative">
+                    <input
+                      id="input-remarks-hb-val"
+                      type="number"
+                      min="0"
+                      value={formData.instalasiHB[selectedRemarksHB] || ''}
+                      onChange={(e) => handleNestedChange('instalasiHB', selectedRemarksHB, e.target.value)}
+                      placeholder="0"
+                      className="w-full h-9 bg-[#050b14] border border-slate-700/80 focus:border-orange-400 rounded-lg pl-2.5 pr-10 text-xs font-mono-cyber text-white focus:outline-none focus:ring-1 focus:ring-orange-400"
+                    />
+                    <span className="absolute right-2.5 top-2 text-[10px] font-mono-cyber text-slate-400 pointer-events-none">Pcs</span>
+                  </div>
+
+                  {/* Chips ukuran HB terisi */}
+                  {PIT_SIZE_OPTIONS.some((opt) => parseFloat(formData.instalasiHB[`hb${opt.id}` as keyof HBProgress] || '0') > 0) && (
+                    <div className="flex items-center gap-1 flex-wrap pt-0.5">
+                      {PIT_SIZE_OPTIONS.filter((opt) => parseFloat(formData.instalasiHB[`hb${opt.id}` as keyof HBProgress] || '0') > 0).map((opt) => (
+                        <button
+                          key={opt.id}
+                          type="button"
+                          onClick={() => setSelectedRemarksHB(`hb${opt.id}` as keyof HBProgress)}
+                          className={`text-[9px] font-mono-cyber px-1.5 py-0.5 rounded border transition-colors cursor-pointer ${
+                            selectedRemarksHB === `hb${opt.id}`
+                              ? 'bg-orange-950 border-orange-400 text-orange-300 font-bold'
+                              : 'bg-[#050b14] border-slate-700 text-slate-300 hover:border-orange-500/50'
+                          }`}
+                        >
+                          {opt.label}: {formData.instalasiHB[`hb${opt.id}` as keyof HBProgress]}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Manhole (MH) */}
+                <div className="p-2.5 rounded-xl bg-[#08101e] border border-purple-500/30 space-y-1.5">
+                  <div className="flex items-center justify-between gap-1">
+                    <label htmlFor="select-remarks-mh" className="text-[10px] font-mono-cyber text-purple-300 font-semibold">
+                      Manhole (MH):
+                    </label>
+                    <select
+                      id="select-remarks-mh"
+                      value={selectedRemarksMH}
+                      onChange={(e) => setSelectedRemarksMH(e.target.value as keyof MHProgress)}
+                      className="h-6 text-[11px] font-mono-cyber bg-[#050b14] border border-purple-500/50 text-purple-300 rounded-lg px-2 focus:outline-none focus:ring-1 focus:ring-purple-400 cursor-pointer"
+                    >
+                      {PIT_SIZE_OPTIONS.map((opt) => (
+                        <option key={opt.id} value={`mh${opt.id}`}>
+                          {opt.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="relative">
+                    <input
+                      id="input-remarks-mh-val"
+                      type="number"
+                      min="0"
+                      value={formData.instalasiMH[selectedRemarksMH] || ''}
+                      onChange={(e) => handleNestedChange('instalasiMH', selectedRemarksMH, e.target.value)}
+                      placeholder="0"
+                      className="w-full h-9 bg-[#050b14] border border-slate-700/80 focus:border-purple-400 rounded-lg pl-2.5 pr-10 text-xs font-mono-cyber text-white focus:outline-none focus:ring-1 focus:ring-purple-400"
+                    />
+                    <span className="absolute right-2.5 top-2 text-[10px] font-mono-cyber text-slate-400 pointer-events-none">Pcs</span>
+                  </div>
+
+                  {/* Chips ukuran MH terisi */}
+                  {PIT_SIZE_OPTIONS.some((opt) => parseFloat(formData.instalasiMH[`mh${opt.id}` as keyof MHProgress] || '0') > 0) && (
+                    <div className="flex items-center gap-1 flex-wrap pt-0.5">
+                      {PIT_SIZE_OPTIONS.filter((opt) => parseFloat(formData.instalasiMH[`mh${opt.id}` as keyof MHProgress] || '0') > 0).map((opt) => (
+                        <button
+                          key={opt.id}
+                          type="button"
+                          onClick={() => setSelectedRemarksMH(`mh${opt.id}` as keyof MHProgress)}
+                          className={`text-[9px] font-mono-cyber px-1.5 py-0.5 rounded border transition-colors cursor-pointer ${
+                            selectedRemarksMH === `mh${opt.id}`
+                              ? 'bg-purple-950 border-purple-400 text-purple-300 font-bold'
+                              : 'bg-[#050b14] border-slate-700 text-slate-300 hover:border-purple-500/50'
+                          }`}
+                        >
+                          {opt.label}: {formData.instalasiMH[`mh${opt.id}` as keyof MHProgress]}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* 3. Tiang, Galvanis dan HDPE */}
+            <div className="space-y-2 pt-2 border-t border-slate-800/60">
+              <label className="text-[11px] font-mono-cyber text-cyan-300 font-semibold flex items-center gap-1.5">
+                <Zap className="w-3.5 h-3.5 text-cyan-400" />
+                <span>3. Tiang, Galvanis & HDPE</span>
+              </label>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                <div>
+                  <label className="block text-[10px] font-mono-cyber text-slate-400 mb-1">
+                    Tiang Bersama:
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      min="0"
+                      value={formData.tiangGalvanisHDPE.tiangBersama || ''}
+                      onChange={(e) => handleNestedChange('tiangGalvanisHDPE', 'tiangBersama', e.target.value)}
+                      placeholder="0"
+                      className="w-full h-9 bg-[#091224] border border-slate-700/80 focus:border-cyan-400 rounded-xl pl-2.5 pr-8 text-xs font-mono-cyber text-white focus:outline-none focus:ring-1 focus:ring-cyan-400"
+                    />
+                    <span className="absolute right-2.5 top-2 text-[10px] font-mono-cyber text-slate-400 pointer-events-none">Pcs</span>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-[10px] font-mono-cyber text-slate-400 mb-1">
+                    Pipa Galvanis:
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      min="0"
+                      value={formData.tiangGalvanisHDPE.galvanis2Inch || ''}
+                      onChange={(e) => handleNestedChange('tiangGalvanisHDPE', 'galvanis2Inch', e.target.value)}
+                      placeholder="0"
+                      className="w-full h-9 bg-[#091224] border border-slate-700/80 focus:border-cyan-400 rounded-xl pl-2.5 pr-8 text-xs font-mono-cyber text-white focus:outline-none focus:ring-1 focus:ring-cyan-400"
+                    />
+                    <span className="absolute right-2.5 top-2 text-[10px] font-mono-cyber text-slate-400 pointer-events-none">m</span>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-[10px] font-mono-cyber text-slate-400 mb-1">
+                    Instal HDPE:
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      min="0"
+                      value={formData.tiangGalvanisHDPE.instalHDPE || ''}
+                      onChange={(e) => handleNestedChange('tiangGalvanisHDPE', 'instalHDPE', e.target.value)}
+                      placeholder="0"
+                      className="w-full h-9 bg-[#091224] border border-slate-700/80 focus:border-cyan-400 rounded-xl pl-2.5 pr-8 text-xs font-mono-cyber text-white focus:outline-none focus:ring-1 focus:ring-cyan-400"
+                    />
+                    <span className="absolute right-2.5 top-2 text-[10px] font-mono-cyber text-slate-400 pointer-events-none">m</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* 4. Dismantling (Bongkar) */}
+            <div className="space-y-2 pt-2 border-t border-slate-800/60">
+              <label className="text-[11px] font-mono-cyber text-rose-300 font-semibold flex items-center gap-1.5">
+                <Trash2 className="w-3.5 h-3.5 text-rose-400" />
+                <span>4. Dismantling (Bongkar)</span>
+              </label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <div>
+                  <label className="block text-[10px] font-mono-cyber text-slate-400 mb-1">
+                    Dismantle Kabel:
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      min="0"
+                      value={formData.dismantling.dismantleKabel || ''}
+                      onChange={(e) => handleNestedChange('dismantling', 'dismantleKabel', e.target.value)}
+                      placeholder="0"
+                      className="w-full h-9 bg-[#091224] border border-slate-700/80 focus:border-rose-400 rounded-xl pl-3 pr-10 text-xs font-mono-cyber text-white focus:outline-none focus:ring-1 focus:ring-rose-400"
+                    />
+                    <span className="absolute right-3 top-2 text-[10px] font-mono-cyber text-slate-400 pointer-events-none">Meter</span>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-[10px] font-mono-cyber text-slate-400 mb-1">
+                    Dismantle Tiang:
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      min="0"
+                      value={formData.dismantling.dismantleTiang || ''}
+                      onChange={(e) => handleNestedChange('dismantling', 'dismantleTiang', e.target.value)}
+                      placeholder="0"
+                      className="w-full h-9 bg-[#091224] border border-slate-700/80 focus:border-rose-400 rounded-xl pl-3 pr-10 text-xs font-mono-cyber text-white focus:outline-none focus:ring-1 focus:ring-rose-400"
+                    />
+                    <span className="absolute right-3 top-2 text-[10px] font-mono-cyber text-slate-400 pointer-events-none">Pcs</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Tombol Sisipkan Format Rincian ke Catatan */}
+            <div className="pt-2 flex justify-end">
+              <button
+                type="button"
+                onClick={() => {
+                  const activeFO = FO_CABLE_OPTIONS
+                    .filter(opt => parseFloat(formData.pulling[opt.key] || '0') > 0)
+                    .map(opt => `${opt.label} (${formData.pulling[opt.key]}m)`);
+                  const foSummary = activeFO.length > 0 
+                    ? `FO: ${activeFO.join(', ')}` 
+                    : (parseFloat(formData.totalProgressKabel || '0') > 0 ? `FO: ${formData.totalProgressKabel}m` : 'FO: 0m');
+                  
+                  const coaxVal = formData.pulling?.pullingCoax || '0';
+                  const coaxSummary = parseFloat(coaxVal) > 0 ? `, Coax: ${coaxVal}m` : '';
+
+                  const activeHH = PIT_SIZE_OPTIONS
+                    .filter(opt => parseFloat(formData.instalasiHH[`hh${opt.id}` as keyof HHProgress] || '0') > 0)
+                    .map(opt => `${opt.label} (${formData.instalasiHH[`hh${opt.id}` as keyof HHProgress]} Pcs)`);
+                  const hhSummary = activeHH.length > 0 ? `HH [${activeHH.join(', ')}]` : `HH: ${formData.totalProgressHH || '0'} Pcs`;
+
+                  const activeHB = PIT_SIZE_OPTIONS
+                    .filter(opt => parseFloat(formData.instalasiHB[`hb${opt.id}` as keyof HBProgress] || '0') > 0)
+                    .map(opt => `${opt.label} (${formData.instalasiHB[`hb${opt.id}` as keyof HBProgress]} Pcs)`);
+                  const hbSummary = activeHB.length > 0 ? `HB [${activeHB.join(', ')}]` : `HB: ${formData.totalProgressHB || '0'} Pcs`;
+
+                  const activeMH = PIT_SIZE_OPTIONS
+                    .filter(opt => parseFloat(formData.instalasiMH[`mh${opt.id}` as keyof MHProgress] || '0') > 0)
+                    .map(opt => `${opt.label} (${formData.instalasiMH[`mh${opt.id}` as keyof MHProgress]} Pcs)`);
+                  const mhSummary = activeMH.length > 0 ? `MH [${activeMH.join(', ')}]` : `MH: ${formData.totalProgressMH || '0'} Pcs`;
+
+                  const tiangVal = formData.tiangGalvanisHDPE.tiangBersama || '0';
+                  const galvVal = formData.tiangGalvanisHDPE.galvanis2Inch || '0';
+                  const hdpeVal = formData.tiangGalvanisHDPE.instalHDPE || '0';
+                  const disKabelVal = formData.dismantling.dismantleKabel || '0';
+                  const disTiangVal = formData.dismantling.dismantleTiang || '0';
+
+                  const textLines = [
+                    `[Rincian Item Pengamanan]`,
+                    `• Penarikan Kabel: ${foSummary}${coaxSummary}`,
+                    `• Instalasi Pit: ${hhSummary}, ${hbSummary}, ${mhSummary}`,
+                    `• Tiang, Galvanis & HDPE: Tiang ${tiangVal} Pcs, Galv ${galvVal} m, HDPE ${hdpeVal} m`,
+                    `• Dismantling: Kabel ${disKabelVal} m, Tiang ${disTiangVal} Pcs`
+                  ];
+
+                  const current = formData.remarks ? formData.remarks.trim() + '\n\n' : '';
+                  handleTopLevelChange('remarks', current + textLines.join('\n'));
+                }}
+                className="text-xs font-mono-cyber px-3 py-1.5 rounded-lg bg-amber-950/60 border border-amber-500/40 text-amber-300 hover:bg-amber-900/60 transition-colors flex items-center gap-1.5 cursor-pointer"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                <span>+ Salin Format Rincian ke Catatan Remarks</span>
+              </button>
+            </div>
+          </div>
+        )}
         
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-800">
           <div className="text-xs font-mono-cyber text-slate-400">Template Cepat:</div>
           <div className="flex items-center gap-1.5 flex-wrap">
-            <button
-              type="button"
-              onClick={() => handleTopLevelChange('remarks', 'Pekerjaan harian berjalan normal sesuai jadwal.')}
-              className="text-[10px] font-mono-cyber px-2 py-1 rounded-lg bg-purple-950/60 border border-purple-500/40 text-purple-300 hover:bg-purple-900/60 transition-colors cursor-pointer"
-            >
-              + 'Normal sesuai jadwal'
-            </button>
-            <button
-              type="button"
-              onClick={() => handleTopLevelChange('remarks', 'Progress dilanjutkan besok pagi sesuai koordinasi waspang.')}
-              className="text-[10px] font-mono-cyber px-2 py-1 rounded-lg bg-slate-800/80 border border-slate-700 text-slate-300 hover:text-white hover:bg-slate-700 transition-colors cursor-pointer"
-            >
-              + 'Lanjut besok'
-            </button>
+            {formData.projectCategory === 'Pengamanan' ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() => handleTopLevelChange('remarks', 'Pengamanan aset jaringan dan perapihan kabel utilitas berjalan aman dan tertib.')}
+                  className="text-[10px] font-mono-cyber px-2 py-1 rounded-lg bg-amber-950/60 border border-amber-500/40 text-amber-300 hover:bg-amber-900/60 transition-colors cursor-pointer"
+                >
+                  + 'Pengamanan aset & perapihan'
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleTopLevelChange('remarks', 'Koordinasi lapangan dengan dinas/pihak terkait telah dilakukan, pengawasan berlanjut.')}
+                  className="text-[10px] font-mono-cyber px-2 py-1 rounded-lg bg-slate-800/80 border border-slate-700 text-slate-300 hover:text-white hover:bg-slate-700 transition-colors cursor-pointer"
+                >
+                  + 'Koordinasi dinas terkait'
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  onClick={() => handleTopLevelChange('remarks', 'Pekerjaan harian berjalan normal sesuai jadwal.')}
+                  className="text-[10px] font-mono-cyber px-2 py-1 rounded-lg bg-purple-950/60 border border-purple-500/40 text-purple-300 hover:bg-purple-900/60 transition-colors cursor-pointer"
+                >
+                  + 'Normal sesuai jadwal'
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleTopLevelChange('remarks', 'Progress dilanjutkan besok pagi sesuai koordinasi waspang.')}
+                  className="text-[10px] font-mono-cyber px-2 py-1 rounded-lg bg-slate-800/80 border border-slate-700 text-slate-300 hover:text-white hover:bg-slate-700 transition-colors cursor-pointer"
+                >
+                  + 'Lanjut besok'
+                </button>
+              </>
+            )}
           </div>
         </div>
 
         <div>
+          <label className="block text-[11px] font-mono-cyber text-slate-400 mb-1">
+            Catatan Tambahan / Teks Remarks:
+          </label>
           <textarea
             id="input-remarks"
             rows={3}

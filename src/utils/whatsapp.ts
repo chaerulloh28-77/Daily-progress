@@ -28,6 +28,7 @@ export function generateWhatsAppReportText(report: DailyReportFormData): string 
     calculateTotals(report);
 
   const dayInfo = report.dayNumber ? ` [Hari ke-${report.dayNumber}]` : '';
+  const isPeng = isPengamananReport(report);
 
   const lines = [
     `*🚨 LAPORAN MONITORING HARIAN PROJECT 🚨*`,
@@ -43,54 +44,89 @@ export function generateWhatsAppReportText(report: DailyReportFormData): string 
     ...(report.keteranganPengamanan ? [`   • *Catatan Pengamanan:* ${report.keteranganPengamanan}`] : []),
     ...(report.area ? [`📍 *Area:* ${report.area}`] : []),
     ...(report.waspangName ? [`👷 *Waspang (Pengawas):* ${report.waspangName}`] : []),
-    `📅 *Tanggal:* ${report.reportDate}${dayInfo}`,
+    ...(isPeng
+      ? [
+          `📅 *Tanggal Pelaksanaan:* ${report.reportDate}`,
+          ...(report.endDate ? [`🏁 *Tanggal Selesai:* ${report.endDate}`] : []),
+        ]
+      : [
+          `📅 *Tanggal:* ${report.reportDate}${dayInfo}`,
+        ]),
     `🌦️ *Kondisi Cuaca:* ${report.weatherCondition || '-'}`,
-    report.durasiPekerjaan
-      ? `⏱️ *Durasi Pekerjaan:* ${report.durasiPekerjaan} Hari (Start: ${report.startDate || '-'})`
-      : `⏱️ *Periode Project:* ${report.startDate || '-'} s/d ${report.endDate || '-'}`,
+    ...(isPeng
+      ? (report.startDate && report.endDate
+          ? [`⏱️ *Periode Project:* ${report.startDate} s/d ${report.endDate}`]
+          : [])
+      : [
+          report.durasiPekerjaan
+            ? `⏱️ *Durasi Pekerjaan:* ${report.durasiPekerjaan} Hari (Start: ${report.startDate || '-'})`
+            : `⏱️ *Periode Project:* ${report.startDate || '-'} s/d ${report.endDate || '-'}`,
+        ]),
     `━━━━━━━━━━━━━━━━━━━━`,
-    `*📊 RINGKASAN PROGRES UTAMA:*`,
-    `• Total Progres Sipil : *${report.totalProgressSipil || 0} Meter*`,
-    `• Total Progres Kabel : *${report.totalProgressKabel || 0} Meter*`,
-    `• Total Progres Coax  : *${report.totalProgressKabelCoax || report.pulling?.pullingCoax || 0} Meter*`,
-    `• Total Handhole (HH) : *${report.totalProgressHH || totalHH} Pcs*`,
-    `• Total Handbox (HB)  : *${report.totalProgressHB || totalHB} Pcs*`,
-    `• Total Manhole (MH)  : *${report.totalProgressMH || totalMH} Pcs*`,
-    ``,
-    `*🛠️ RINCIAN PEKERJAAN HARIAN:*`,
-    ``,
-    `*1. Boring & Crossing (Total: ${totalBoring} m)*`,
-    `   - Boring Alur: ${report.boring.boringAlur || 0} m`,
-    `   - Crossing Jalan: ${report.boring.boringCrossingJalan || 0} m`,
-    `   - Boring Akses: ${report.boring.boringAkses || report.boring.boringCrossingJalanTol || 0} m`,
-    `   - Crossing Jembatan: ${report.boring.boringCrossingJembatan || 0} m`,
-    ``,
-    `*2. Penarikan Kabel / Pulling (Total: ${totalPulling} m)*`,
-    `   - Kabel 288: ${report.pulling.pulling288 || 0} m`,
-    `   - Kabel 288 GL: ${report.pulling.pulling288GL || 0} m`,
-    `   - Kabel 144: ${report.pulling.pulling144 || 0} m`,
-    `   - Kabel 96: ${report.pulling.pulling96 || 0} m`,
-    `   - Kabel 96 GL: ${report.pulling.pulling96GL || 0} m`,
-    `   - Kabel 48: ${report.pulling.pulling48 || 0} m`,
-    `   - Kabel 24: ${report.pulling.pulling24 || 0} m`,
-    `   - Kabel Coaxial: ${report.pulling?.pullingCoax || report.totalProgressKabelCoax || 0} m`,
-    ``,
-    `*3. Instalasi Pit (Total: ${totalPit} Pcs)*`,
-    `   - Handhole (HH): ${totalHH} Pcs (60x60: ${report.instalasiHH.hh60x60 || 0}, 80x80: ${report.instalasiHH.hh80x80 || 0}, 100x100: ${report.instalasiHH.hh100x100 || 0}, 110x110: ${report.instalasiHH.hh110x110 || 0}, 120x120: ${report.instalasiHH.hh120x120 || 0})`,
-    `   - Handbox (HB): ${totalHB} Pcs (60x60: ${report.instalasiHB.hb60x60 || 0}, 80x80: ${report.instalasiHB.hb80x80 || 0}, 100x100: ${report.instalasiHB.hb100x100 || 0}, 110x110: ${report.instalasiHB.hb110x110 || 0}, 120x120: ${report.instalasiHB.hb120x120 || 0})`,
-    `   - Manhole (MH): ${totalMH} Pcs (80x80: ${report.instalasiMH.mh80x80 || 0}, 100x100: ${report.instalasiMH.mh100x100 || 0}, 110x110: ${report.instalasiMH.mh110x110 || 0}, 120x120: ${report.instalasiMH.mh120x120 || 0})`,
-    `   - Manbox (MB): ${totalMB} Pcs (80x80: ${report.instalasiMB.mb80x80 || 0}, 100x100: ${report.instalasiMB.mb100x100 || 0}, 120x120: ${report.instalasiMB.mb120x120 || 0})`,
-    ``,
-    `*4. Tiang, Galvanis & HDPE*`,
-    `   - Tiang Bersama: ${report.tiangGalvanisHDPE.tiangBersama || 0} Pcs`,
-    `   - Galvanis 2": ${report.tiangGalvanisHDPE.galvanis2Inch || 0} m`,
-    `   - Galvanis ATB (${report.tiangGalvanisHDPE.galvanisATBOption || 'Galv 4"'}): ${report.tiangGalvanisHDPE.galvanisATB ?? report.tiangGalvanisHDPE.galvanis4Inch ?? 0} m`,
-    `   - Instal HDPE: ${report.tiangGalvanisHDPE.instalHDPE || 0} m`,
-    ``,
-    `*5. Dismantling (Bongkar)*`,
-    `   - Dismantle Kabel: ${report.dismantling.dismantleKabel || 0} m`,
-    `   - Dismantle Tiang: ${report.dismantling.dismantleTiang || 0} Pcs`,
-    ...(report.remarks ? [``, `📝 *REMARKS:*`, `   ${report.remarks}`] : []),
+    ...(isPeng
+      ? []
+      : [
+          `*📊 RINGKASAN PROGRES UTAMA:*`,
+          `• Total Progres Sipil : *${report.totalProgressSipil || 0} Meter*`,
+          `• Total Progres Kabel : *${report.totalProgressKabel || 0} Meter*`,
+          `• Total Progres Coax  : *${report.totalProgressKabelCoax || report.pulling?.pullingCoax || 0} Meter*`,
+          `• Total Handhole (HH) : *${report.totalProgressHH || totalHH} Pcs*`,
+          `• Total Handbox (HB)  : *${report.totalProgressHB || totalHB} Pcs*`,
+          `• Total Manhole (MH)  : *${report.totalProgressMH || totalMH} Pcs*`,
+          ``,
+          `*🛠️ RINCIAN PEKERJAAN HARIAN:*`,
+          ``,
+          `*1. Boring & Crossing (Total: ${totalBoring} m)*`,
+          `   - Boring Alur: ${report.boring.boringAlur || 0} m`,
+          `   - Crossing Jalan: ${report.boring.boringCrossingJalan || 0} m`,
+          `   - Boring Akses: ${report.boring.boringAkses || report.boring.boringCrossingJalanTol || 0} m`,
+          `   - Crossing Jembatan: ${report.boring.boringCrossingJembatan || 0} m`,
+          ``,
+          `*2. Penarikan Kabel / Pulling (Total: ${totalPulling} m)*`,
+          `   - Kabel 288: ${report.pulling.pulling288 || 0} m`,
+          `   - Kabel 288 GL: ${report.pulling.pulling288GL || 0} m`,
+          `   - Kabel 144: ${report.pulling.pulling144 || 0} m`,
+          `   - Kabel 144 GL: ${report.pulling.pulling144GL || 0} m`,
+          `   - Kabel 96: ${report.pulling.pulling96 || 0} m`,
+          `   - Kabel 96 GL: ${report.pulling.pulling96GL || 0} m`,
+          `   - Kabel 48: ${report.pulling.pulling48 || 0} m`,
+          `   - Kabel 24: ${report.pulling.pulling24 || 0} m`,
+          `   - Kabel 12: ${report.pulling.pulling12 || 0} m`,
+          `   - Kabel Coaxial: ${report.pulling?.pullingCoax || report.totalProgressKabelCoax || 0} m`,
+          ``,
+          `*3. Instalasi Pit (Total: ${totalPit} Pcs)*`,
+          `   - Handhole (HH): ${totalHH} Pcs (60x60: ${report.instalasiHH.hh60x60 || 0}, 80x80: ${report.instalasiHH.hh80x80 || 0}, 100x100: ${report.instalasiHH.hh100x100 || 0}, 110x110: ${report.instalasiHH.hh110x110 || 0}, 120x120: ${report.instalasiHH.hh120x120 || 0})`,
+          `   - Handbox (HB): ${totalHB} Pcs (60x60: ${report.instalasiHB.hb60x60 || 0}, 80x80: ${report.instalasiHB.hb80x80 || 0}, 100x100: ${report.instalasiHB.hb100x100 || 0}, 110x110: ${report.instalasiHB.hb110x110 || 0}, 120x120: ${report.instalasiHB.hb120x120 || 0})`,
+          `   - Manhole (MH): ${totalMH} Pcs (60x60: ${report.instalasiMH.mh60x60 || 0}, 80x80: ${report.instalasiMH.mh80x80 || 0}, 100x100: ${report.instalasiMH.mh100x100 || 0}, 110x110: ${report.instalasiMH.mh110x110 || 0}, 120x120: ${report.instalasiMH.mh120x120 || 0})`,
+          `   - Manbox (MB): ${totalMB} Pcs (80x80: ${report.instalasiMB.mb80x80 || 0}, 100x100: ${report.instalasiMB.mb100x100 || 0}, 120x120: ${report.instalasiMB.mb120x120 || 0})`,
+          ``,
+          `*4. Tiang, Galvanis & HDPE*`,
+          `   - Tiang Bersama: ${report.tiangGalvanisHDPE.tiangBersama || 0} Pcs`,
+          `   - Galvanis 2": ${report.tiangGalvanisHDPE.galvanis2Inch || 0} m`,
+          `   - Galvanis ATB (${report.tiangGalvanisHDPE.galvanisATBOption || 'Galv 4"'}): ${report.tiangGalvanisHDPE.galvanisATB ?? report.tiangGalvanisHDPE.galvanis4Inch ?? 0} m`,
+          `   - Instal HDPE: ${report.tiangGalvanisHDPE.instalHDPE || 0} m`,
+          ``,
+          `*5. Dismantling (Bongkar)*`,
+          `   - Dismantle Kabel: ${report.dismantling.dismantleKabel || 0} m`,
+          `   - Dismantle Tiang: ${report.dismantling.dismantleTiang || 0} Pcs`,
+        ]),
+    ...(isPeng
+      ? [
+          ``,
+          `📝 *REMARKS / RINCIAN PEKERJAAN:*`,
+          ...(report.remarks && report.remarks.includes('Penarikan Kabel')
+            ? [`${report.remarks}`]
+            : [
+                `• Penarikan Kabel/Pulling : ${totalPulling || report.totalProgressKabel || 0} m${report.pulling?.pullingCoax ? ` (Coax: ${report.pulling.pullingCoax} m)` : ''}`,
+                `• Instalasi Pit (HH,HB,MH): HH ${report.totalProgressHH || totalHH || 0} Pcs, HB ${report.totalProgressHB || totalHB || 0} Pcs, MH ${report.totalProgressMH || totalMH || 0} Pcs`,
+                `• Tiang, Galvanis & HDPE  : Tiang ${report.tiangGalvanisHDPE?.tiangBersama || 0} Pcs, Galv ${[report.tiangGalvanisHDPE?.galvanis2Inch ? `2": ${report.tiangGalvanisHDPE.galvanis2Inch}m` : '', (report.tiangGalvanisHDPE?.galvanisATB ?? report.tiangGalvanisHDPE?.galvanis4Inch) ? `ATB: ${report.tiangGalvanisHDPE?.galvanisATB ?? report.tiangGalvanisHDPE?.galvanis4Inch}m` : ''].filter(Boolean).join(', ') || '0m'}, HDPE ${report.tiangGalvanisHDPE?.instalHDPE || 0} m`,
+                `• Dismantling (Bongkar)   : Kabel ${report.dismantling?.dismantleKabel || 0} m, Tiang ${report.dismantling?.dismantleTiang || 0} Pcs`,
+                ...(report.remarks ? [``, `📌 *Catatan Lapangan:*`, `   ${report.remarks}`] : []),
+              ]),
+        ]
+      : [
+          ...(report.remarks ? [``, `📝 *REMARKS:*`, `   ${report.remarks}`] : []),
+        ]),
     ``,
     `⚠️ *KENDALA / ISU LAPANGAN:*`,
     `${report.kendalaLapangan ? `"${report.kendalaLapangan}"` : 'Tidak ada kendala lapangan.'}`,
@@ -523,9 +559,6 @@ export function generateWeeklyAdminWhatsAppText(data: WeeklyRecapData): string {
   if (pengamanan) {
     lines.push(`- Total Laporan: *${pengamanan.totalReports} Laporan* (${pengamanan.activeWaspangs} Personil)`);
     lines.push(
-      `- Total Sipil  : *${pengamanan.totalSipil.toLocaleString('id-ID')} m* | Total Kabel: *${pengamanan.totalKabel.toLocaleString('id-ID')} m*`
-    );
-    lines.push(
       `- Status Isu   : *${pengamanan.totalKendala > 0 ? `⚠️ ${pengamanan.totalKendala} Kendala Terlaporkan` : `✅ Aman / Nihil Kendala`}*`
     );
     lines.push(`─────────────────────────────────`);
@@ -538,7 +571,7 @@ export function generateWeeklyAdminWhatsAppText(data: WeeklyRecapData): string {
         lines.push(``);
         lines.push(`*🔹 [AREA ${area.areaName.toUpperCase()}]*`);
         lines.push(
-          `   📊 _Subtotal: ${area.totalReports} Lap | Sipil: ${area.totalSipil.toLocaleString('id-ID')} m | Kabel: ${area.totalKabel.toLocaleString('id-ID')} m_`
+          `   📊 _Subtotal: ${area.totalReports} Laporan (${area.waspangs.length} Personil)_`
         );
         lines.push(`   ───────────────────────────`);
 
@@ -552,8 +585,6 @@ export function generateWeeklyAdminWhatsAppText(data: WeeklyRecapData): string {
           lines.push(`   👷 *${w.waspangName.toUpperCase()}*`);
           lines.push(`      ├ 🗓️ *Kehadiran*    : *${w.totalDays} Hari* (${w.reportCount} laporan)`);
           lines.push(`      ├ 📅 *Update Daily* : ${datesText}`);
-          lines.push(`      ├ 🏗️ *Pek. Sipil*   : *${w.totalSipil.toLocaleString('id-ID')} m* (Boring & Pit)`);
-          lines.push(`      ├ ⚡ *Pek. Kabel*   : *${w.totalKabel.toLocaleString('id-ID')} m* (FO & Coax)`);
           lines.push(`      ├ 🎯 *Project*      : ${projectText}`);
           lines.push(`      └ 🚦 *Status*       : ${statusLabel}`);
           lines.push(``);

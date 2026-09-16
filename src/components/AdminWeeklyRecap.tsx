@@ -37,6 +37,7 @@ import {
   isPengamananReport
 } from '../utils/whatsapp';
 import { WaspangPerformanceChart } from './WaspangPerformanceChart';
+import { KpiDetailModal, WaspangDetailModal, KpiDetailType } from './AdminRecapModals';
 
 interface AdminWeeklyRecapProps {
   savedReports: DailyReportFormData[];
@@ -71,12 +72,17 @@ export const AdminWeeklyRecap: React.FC<AdminWeeklyRecapProps> = ({
   const [periodPreset, setPeriodPreset] = useState<PeriodPreset>('7days');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedAreaFilter, setSelectedAreaFilter] = useState<'All' | 'Jabo 1' | 'Jabo 2' | 'Jabo 3'>('All');
+  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<'All' | 'Relokasi Goverment' | 'Pengamanan'>('All');
   const [expandedWaspang, setExpandedWaspang] = useState<Record<string, boolean>>({});
   const [copiedWA, setCopiedWA] = useState(false);
   const [targetPhoneWA, setTargetPhoneWA] = useState('');
   const [showPhoneInput, setShowPhoneInput] = useState(false);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [previewMode, setPreviewMode] = useState<'chat' | 'raw'>('chat');
+
+  // Interactive Detailed Modals state
+  const [activeKpiModal, setActiveKpiModal] = useState<KpiDetailType | null>(null);
+  const [selectedWaspangModal, setSelectedWaspangModal] = useState<{ waspangName: string; areaName: string } | null>(null);
 
   // Custom date range state (defaults to 7 days before today)
   const today = useMemo(() => new Date(), []);
@@ -134,14 +140,21 @@ export const AdminWeeklyRecap: React.FC<AdminWeeklyRecapProps> = ({
     };
   }, [periodPreset, customStart, customEnd]);
 
-  // Filter reports by active date range
+  // Filter reports by active date range and selectedCategoryFilter
   const filteredReports = useMemo(() => {
     return savedReports.filter((rep) => {
       const rDate = rep.reportDate || (rep.submittedAt ? rep.submittedAt.slice(0, 10) : '');
       if (!rDate) return false;
-      return rDate >= startDateStr && rDate <= endDateStr;
+      if (rDate < startDateStr || rDate > endDateStr) return false;
+
+      if (selectedCategoryFilter !== 'All') {
+        const isPeng = isPengamananReport(rep);
+        if (selectedCategoryFilter === 'Pengamanan' && !isPeng) return false;
+        if (selectedCategoryFilter === 'Relokasi Goverment' && isPeng) return false;
+      }
+      return true;
     });
-  }, [savedReports, startDateStr, endDateStr]);
+  }, [savedReports, startDateStr, endDateStr, selectedCategoryFilter]);
 
   // Build Structured Weekly Recap Data (grouped by Area -> Waspang)
   const recapData: WeeklyRecapData = useMemo(() => {
@@ -459,27 +472,48 @@ export const AdminWeeklyRecap: React.FC<AdminWeeklyRecapProps> = ({
           </div>
         )}
 
-        {/* Filter Area & Search Input */}
+        {/* Filter Area, Kategori & Search Input */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
-          {/* Area Chips */}
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
-            <span className="text-xs font-mono-cyber text-slate-400 mr-1 flex items-center gap-1">
-              <MapPin className="w-3.5 h-3.5 text-cyan-400" /> Area:
-            </span>
-            {(['All', 'Jabo 1', 'Jabo 2', 'Jabo 3'] as const).map((area) => (
-              <button
-                key={area}
-                type="button"
-                onClick={() => setSelectedAreaFilter(area)}
-                className={`px-2.5 py-1 rounded-lg text-[11px] font-mono-cyber transition-all cursor-pointer ${
-                  selectedAreaFilter === area
-                    ? 'bg-cyan-950 border border-cyan-400 text-cyan-300 font-semibold'
-                    : 'bg-[#050b14] border border-slate-800 text-slate-400 hover:text-slate-200'
-                }`}
-              >
-                {area === 'All' ? 'Semua Area' : area}
-              </button>
-            ))}
+          {/* Category & Area Chips */}
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0 scrollbar-none flex-wrap">
+            {/* Kategori Filter */}
+            <div className="flex items-center bg-[#050b14] border border-slate-800 rounded-lg p-0.5 text-xs font-mono-cyber">
+              {(['All', 'Relokasi Goverment', 'Pengamanan'] as const).map((cat) => (
+                <button
+                  key={cat}
+                  type="button"
+                  onClick={() => setSelectedCategoryFilter(cat)}
+                  className={`px-2.5 py-1 rounded-md transition-all cursor-pointer text-[11px] ${
+                    selectedCategoryFilter === cat
+                      ? 'bg-cyan-500 text-black font-bold shadow-xs'
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  {cat === 'All' ? 'Semua Kategori' : cat === 'Relokasi Goverment' ? 'Relokasi Gov' : 'Pengamanan'}
+                </button>
+              ))}
+            </div>
+
+            {/* Area Chips */}
+            <div className="flex items-center gap-1">
+              <span className="text-xs font-mono-cyber text-slate-400 mx-1 flex items-center gap-1">
+                <MapPin className="w-3.5 h-3.5 text-cyan-400" /> Area:
+              </span>
+              {(['All', 'Jabo 1', 'Jabo 2', 'Jabo 3'] as const).map((area) => (
+                <button
+                  key={area}
+                  type="button"
+                  onClick={() => setSelectedAreaFilter(area)}
+                  className={`px-2.5 py-1 rounded-lg text-[11px] font-mono-cyber transition-all cursor-pointer ${
+                    selectedAreaFilter === area
+                      ? 'bg-cyan-950 border border-cyan-400 text-cyan-300 font-semibold'
+                      : 'bg-[#050b14] border border-slate-800 text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  {area === 'All' ? 'Semua' : area}
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* Search Box */}
@@ -505,98 +539,133 @@ export const AdminWeeklyRecap: React.FC<AdminWeeklyRecapProps> = ({
         </div>
       </div>
 
-      {/* KPI Cards: Grand Totals for Selected Period */}
+      {/* KPI Cards: Grand Totals for Selected Period (Interactive: Klik untuk rincian) */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5 sm:gap-3">
         {/* Total Laporan */}
-        <div className="bg-[#091224] border border-cyan-500/30 rounded-2xl p-3 sm:p-3.5 shadow-lg shadow-cyan-950/15 flex flex-col justify-between relative overflow-hidden group hover:border-cyan-400/50 transition-all">
+        <div 
+          onClick={() => setActiveKpiModal('reports')}
+          className="bg-[#091224] border border-cyan-500/30 hover:border-cyan-400 rounded-2xl p-3 sm:p-3.5 shadow-lg shadow-cyan-950/15 flex flex-col justify-between relative overflow-hidden group transition-all cursor-pointer hover:scale-[1.02] active:scale-[0.99]"
+          title="Klik untuk melihat seluruh daftar laporan terperinci"
+        >
           <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-cyan-500 to-teal-400" />
           <div className="flex items-center justify-between text-slate-400 mb-1">
-            <span className="text-[10px] sm:text-xs font-mono-cyber uppercase font-bold tracking-wider">Total Laporan</span>
-            <div className="w-6 h-6 rounded-lg bg-cyan-950/80 border border-cyan-500/30 flex items-center justify-center">
+            <span className="text-[10px] sm:text-xs font-mono-cyber uppercase font-bold tracking-wider group-hover:text-cyan-300 transition-colors">Total Laporan</span>
+            <div className="w-6 h-6 rounded-lg bg-cyan-950/80 border border-cyan-500/30 flex items-center justify-center group-hover:bg-cyan-900 transition-colors">
               <FileText className="w-3.5 h-3.5 text-cyan-400" />
             </div>
           </div>
-          <div className="text-xl sm:text-2xl font-bold font-mono-cyber text-white my-0.5">
+          <div className="text-xl sm:text-2xl font-bold font-mono-cyber text-white my-0.5 group-hover:text-cyan-200 transition-colors">
             {recapData.grandTotal.totalReports}
           </div>
-          <span className="text-[10px] font-mono-cyber text-cyan-400/80 flex items-center gap-1">
-            <span className="w-1.5 h-1.5 rounded-full bg-cyan-400" />
-            <span>{periodLabel}</span>
-          </span>
+          <div className="flex items-center justify-between text-[10px] font-mono-cyber text-cyan-400/80 pt-0.5">
+            <span className="flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-cyan-400" />
+              <span>{periodLabel}</span>
+            </span>
+            <span className="text-cyan-300 font-bold group-hover:underline">💡 Rincian ↗</span>
+          </div>
         </div>
 
         {/* Waspang Aktif */}
-        <div className="bg-[#091224] border border-blue-500/30 rounded-2xl p-3 sm:p-3.5 shadow-lg shadow-blue-950/15 flex flex-col justify-between relative overflow-hidden group hover:border-blue-400/50 transition-all">
+        <div 
+          onClick={() => setActiveKpiModal('waspangs')}
+          className="bg-[#091224] border border-blue-500/30 hover:border-blue-400 rounded-2xl p-3 sm:p-3.5 shadow-lg shadow-blue-950/15 flex flex-col justify-between relative overflow-hidden group transition-all cursor-pointer hover:scale-[1.02] active:scale-[0.99]"
+          title="Klik untuk melihat performa & keaktifan personil waspang"
+        >
           <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 to-indigo-400" />
           <div className="flex items-center justify-between text-slate-400 mb-1">
-            <span className="text-[10px] sm:text-xs font-mono-cyber uppercase font-bold tracking-wider">Waspang Aktif</span>
-            <div className="w-6 h-6 rounded-lg bg-blue-950/80 border border-blue-500/30 flex items-center justify-center">
+            <span className="text-[10px] sm:text-xs font-mono-cyber uppercase font-bold tracking-wider group-hover:text-blue-300 transition-colors">Waspang Aktif</span>
+            <div className="w-6 h-6 rounded-lg bg-blue-950/80 border border-blue-500/30 flex items-center justify-center group-hover:bg-blue-900 transition-colors">
               <User className="w-3.5 h-3.5 text-blue-400" />
             </div>
           </div>
-          <div className="text-xl sm:text-2xl font-bold font-mono-cyber text-blue-300 my-0.5">
+          <div className="text-xl sm:text-2xl font-bold font-mono-cyber text-blue-300 my-0.5 group-hover:text-blue-200 transition-colors">
             {recapData.grandTotal.activeWaspangs}
           </div>
-          <span className="text-[10px] font-mono-cyber text-blue-400/80 flex items-center gap-1">
-            <span className="w-1.5 h-1.5 rounded-full bg-blue-400" />
-            <span>Personil Lapangan</span>
-          </span>
+          <div className="flex items-center justify-between text-[10px] font-mono-cyber text-blue-400/80 pt-0.5">
+            <span className="flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-blue-400" />
+              <span>Personil Lapangan</span>
+            </span>
+            <span className="text-blue-300 font-bold group-hover:underline">💡 Rincian ↗</span>
+          </div>
         </div>
 
         {/* Total Progres Sipil */}
-        <div className="bg-[#091224] border border-emerald-500/30 rounded-2xl p-3 sm:p-3.5 shadow-lg shadow-emerald-950/15 flex flex-col justify-between relative overflow-hidden group hover:border-emerald-400/50 transition-all">
+        <div 
+          onClick={() => setActiveKpiModal('sipil')}
+          className="bg-[#091224] border border-emerald-500/30 hover:border-emerald-400 rounded-2xl p-3 sm:p-3.5 shadow-lg shadow-emerald-950/15 flex flex-col justify-between relative overflow-hidden group transition-all cursor-pointer hover:scale-[1.02] active:scale-[0.99]"
+          title="Klik untuk melihat rincian progres sipil (Boring, Galian, HDPE)"
+        >
           <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 to-teal-400" />
           <div className="flex items-center justify-between text-slate-400 mb-1">
-            <span className="text-[10px] sm:text-xs font-mono-cyber uppercase font-bold tracking-wider">Progres Sipil</span>
-            <div className="w-6 h-6 rounded-lg bg-emerald-950/80 border border-emerald-500/30 flex items-center justify-center">
+            <span className="text-[10px] sm:text-xs font-mono-cyber uppercase font-bold tracking-wider group-hover:text-emerald-300 transition-colors">Progres Sipil</span>
+            <div className="w-6 h-6 rounded-lg bg-emerald-950/80 border border-emerald-500/30 flex items-center justify-center group-hover:bg-emerald-900 transition-colors">
               <Layers className="w-3.5 h-3.5 text-emerald-400" />
             </div>
           </div>
-          <div className="text-xl sm:text-2xl font-bold font-mono-cyber text-emerald-300 my-0.5">
+          <div className="text-xl sm:text-2xl font-bold font-mono-cyber text-emerald-300 my-0.5 group-hover:text-emerald-200 transition-colors">
             {recapData.grandTotal.totalSipil.toLocaleString('id-ID')}
             <span className="text-xs font-normal text-emerald-400 ml-1">m</span>
           </div>
-          <span className="text-[10px] font-mono-cyber text-emerald-400/80 flex items-center gap-1">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-            <span>Boring &amp; Akses</span>
-          </span>
+          <div className="flex items-center justify-between text-[10px] font-mono-cyber text-emerald-400/80 pt-0.5">
+            <span className="flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+              <span>Boring &amp; Akses</span>
+            </span>
+            <span className="text-emerald-300 font-bold group-hover:underline">💡 Rincian ↗</span>
+          </div>
         </div>
 
         {/* Total Progres Kabel */}
-        <div className="bg-[#091224] border border-amber-500/30 rounded-2xl p-3 sm:p-3.5 shadow-lg shadow-amber-950/15 flex flex-col justify-between relative overflow-hidden group hover:border-amber-400/50 transition-all">
+        <div 
+          onClick={() => setActiveKpiModal('kabel')}
+          className="bg-[#091224] border border-amber-500/30 hover:border-amber-400 rounded-2xl p-3 sm:p-3.5 shadow-lg shadow-amber-950/15 flex flex-col justify-between relative overflow-hidden group transition-all cursor-pointer hover:scale-[1.02] active:scale-[0.99]"
+          title="Klik untuk melihat rincian progres penarikan kabel (FO & Coax)"
+        >
           <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-amber-500 to-yellow-400" />
           <div className="flex items-center justify-between text-slate-400 mb-1">
-            <span className="text-[10px] sm:text-xs font-mono-cyber uppercase font-bold tracking-wider">Progres Kabel</span>
-            <div className="w-6 h-6 rounded-lg bg-amber-950/80 border border-amber-500/30 flex items-center justify-center">
+            <span className="text-[10px] sm:text-xs font-mono-cyber uppercase font-bold tracking-wider group-hover:text-amber-300 transition-colors">Progres Kabel</span>
+            <div className="w-6 h-6 rounded-lg bg-amber-950/80 border border-amber-500/30 flex items-center justify-center group-hover:bg-amber-900 transition-colors">
               <Cable className="w-3.5 h-3.5 text-amber-400" />
             </div>
           </div>
-          <div className="text-xl sm:text-2xl font-bold font-mono-cyber text-amber-300 my-0.5">
+          <div className="text-xl sm:text-2xl font-bold font-mono-cyber text-amber-300 my-0.5 group-hover:text-amber-200 transition-colors">
             {recapData.grandTotal.totalKabel.toLocaleString('id-ID')}
             <span className="text-xs font-normal text-amber-400 ml-1">m</span>
           </div>
-          <span className="text-[10px] font-mono-cyber text-amber-400/80 flex items-center gap-1">
-            <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
-            <span>FO &amp; Coaxial</span>
-          </span>
+          <div className="flex items-center justify-between text-[10px] font-mono-cyber text-amber-400/80 pt-0.5">
+            <span className="flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+              <span>FO &amp; Coaxial</span>
+            </span>
+            <span className="text-amber-300 font-bold group-hover:underline">💡 Rincian ↗</span>
+          </div>
         </div>
 
         {/* Total Kendala Lapangan */}
-        <div className="col-span-2 sm:col-span-1 bg-[#091224] border border-rose-500/30 rounded-2xl p-3 sm:p-3.5 shadow-lg shadow-rose-950/15 flex flex-col justify-between relative overflow-hidden group hover:border-rose-400/50 transition-all">
+        <div 
+          onClick={() => setActiveKpiModal('kendala')}
+          className="col-span-2 sm:col-span-1 bg-[#091224] border border-rose-500/30 hover:border-rose-400 rounded-2xl p-3 sm:p-3.5 shadow-lg shadow-rose-950/15 flex flex-col justify-between relative overflow-hidden group transition-all cursor-pointer hover:scale-[1.02] active:scale-[0.99]"
+          title="Klik untuk melihat seluruh kendala & isu lapangan terintegrasi"
+        >
           <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-rose-500 to-red-400" />
           <div className="flex items-center justify-between text-slate-400 mb-1">
-            <span className="text-[10px] sm:text-xs font-mono-cyber uppercase font-bold tracking-wider">Isu Lapangan</span>
-            <div className="w-6 h-6 rounded-lg bg-rose-950/80 border border-rose-500/30 flex items-center justify-center">
+            <span className="text-[10px] sm:text-xs font-mono-cyber uppercase font-bold tracking-wider group-hover:text-rose-300 transition-colors">Isu Lapangan</span>
+            <div className="w-6 h-6 rounded-lg bg-rose-950/80 border border-rose-500/30 flex items-center justify-center group-hover:bg-rose-900 transition-colors">
               <AlertTriangle className="w-3.5 h-3.5 text-rose-400" />
             </div>
           </div>
-          <div className="text-xl sm:text-2xl font-bold font-mono-cyber text-rose-300 my-0.5">
+          <div className="text-xl sm:text-2xl font-bold font-mono-cyber text-rose-300 my-0.5 group-hover:text-rose-200 transition-colors">
             {recapData.grandTotal.totalKendala}
           </div>
-          <span className="text-[10px] font-mono-cyber text-rose-400/80 flex items-center gap-1">
-            <span className={`w-1.5 h-1.5 rounded-full ${recapData.grandTotal.totalKendala > 0 ? 'bg-rose-400' : 'bg-emerald-400'}`} />
-            <span>{recapData.grandTotal.totalKendala > 0 ? 'Perlu Perhatian' : 'Kondisi Aman'}</span>
-          </span>
+          <div className="flex items-center justify-between text-[10px] font-mono-cyber text-rose-400/80 pt-0.5">
+            <span className="flex items-center gap-1">
+              <span className={`w-1.5 h-1.5 rounded-full ${recapData.grandTotal.totalKendala > 0 ? 'bg-rose-400' : 'bg-emerald-400'}`} />
+              <span>{recapData.grandTotal.totalKendala > 0 ? 'Perlu Perhatian' : 'Kondisi Aman'}</span>
+            </span>
+            <span className="text-rose-300 font-bold group-hover:underline">💡 Rincian ↗</span>
+          </div>
         </div>
       </div>
 
@@ -604,6 +673,9 @@ export const AdminWeeklyRecap: React.FC<AdminWeeklyRecapProps> = ({
       <WaspangPerformanceChart
         recapData={recapData}
         periodLabel={periodLabel}
+        onSelectWaspang={(wName, aName) => {
+          setSelectedWaspangModal({ waspangName: wName, areaName: aName });
+        }}
       />
 
       {/* WHATSAPP EXPORT ACTION BAR (KHUSUS ADMIN) */}
@@ -697,7 +769,7 @@ export const AdminWeeklyRecap: React.FC<AdminWeeklyRecapProps> = ({
           </span>
           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-950/80 border border-amber-500/30 text-amber-200">
             <span>🛡️</span>
-            <span>Pengamanan: <strong>{recapData.pengamanan?.totalReports || 0} Lap</strong> ({recapData.pengamanan?.totalSipil.toLocaleString('id-ID')}m sipil • {recapData.pengamanan?.totalKabel.toLocaleString('id-ID')}m kabel)</span>
+            <span>Pengamanan: <strong>{recapData.pengamanan?.totalReports || 0} Lap</strong> ({recapData.pengamanan?.activeWaspangs || 0} personil • {recapData.pengamanan?.totalKendala || 0} isu)</span>
           </span>
           {recapData.allKendalaList && recapData.allKendalaList.length > 0 && (
             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-rose-950/80 border border-rose-500/30 text-rose-200">
@@ -778,13 +850,22 @@ export const AdminWeeklyRecap: React.FC<AdminWeeklyRecapProps> = ({
                         {/* Waspang Title & Quick Stats */}
                         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
                           <div className="flex items-start sm:items-center gap-3 min-w-0">
-                            <div className="w-9 h-9 rounded-xl bg-[#091224] border border-cyan-500/30 flex items-center justify-center text-slate-300 font-bold font-mono-cyber text-xs shrink-0 shadow-sm">
+                            <div 
+                              onClick={() => setSelectedWaspangModal({ waspangName: waspang.waspangName, areaName: area.areaName })}
+                              className="w-9 h-9 rounded-xl bg-[#091224] border border-cyan-500/30 flex items-center justify-center text-slate-300 font-bold font-mono-cyber text-xs shrink-0 shadow-sm cursor-pointer hover:border-cyan-400 hover:bg-cyan-950/80 transition-colors"
+                              title="Klik untuk melihat rincian kinerja lengkap"
+                            >
                               <User className="w-4 h-4 text-cyan-400" />
                             </div>
                             <div className="min-w-0 flex-1">
                               <div className="flex items-center gap-2 flex-wrap">
-                                <span className="font-cyber font-bold text-sm sm:text-base text-white tracking-wide truncate">
-                                  {waspang.waspangName}
+                                <span 
+                                  onClick={() => setSelectedWaspangModal({ waspangName: waspang.waspangName, areaName: area.areaName })}
+                                  className="font-cyber font-bold text-sm sm:text-base text-white tracking-wide truncate cursor-pointer hover:text-cyan-300 transition-colors flex items-center gap-1"
+                                  title="Klik untuk melihat rincian terperinci"
+                                >
+                                  <span>{waspang.waspangName}</span>
+                                  <span className="text-[10px] text-cyan-400 font-mono-cyber">↗</span>
                                 </span>
                                 <span className="text-[10px] font-mono-cyber px-1.5 py-0.5 rounded bg-cyan-950/90 text-cyan-300 border border-cyan-500/30">
                                   Waspang
@@ -819,7 +900,7 @@ export const AdminWeeklyRecap: React.FC<AdminWeeklyRecapProps> = ({
                             </div>
                           </div>
 
-                          {/* 4 Performance Metric Chips */}
+                          {/* 4 Performance Metric Chips & Action Buttons */}
                           <div className="grid grid-cols-2 sm:grid-cols-4 lg:flex lg:items-center gap-1.5 sm:gap-2 text-xs font-mono-cyber shrink-0">
                             {/* a. Total Hari Lapor */}
                             <div className="px-2.5 py-1.5 rounded-lg bg-[#091224] border border-cyan-500/30 flex items-center justify-between lg:justify-start gap-1.5 min-w-[90px]" title="Total Hari Lapor / Keaktifan">
@@ -849,12 +930,23 @@ export const AdminWeeklyRecap: React.FC<AdminWeeklyRecapProps> = ({
                               <span className="font-bold">{waspang.totalKendala}</span>
                             </div>
 
-                            {/* Toggle Detail Button */}
+                            {/* Action: Rincian Modal Button */}
+                            <button
+                              type="button"
+                              onClick={() => setSelectedWaspangModal({ waspangName: waspang.waspangName, areaName: area.areaName })}
+                              className="col-span-1 h-8 px-2.5 rounded-lg bg-cyan-950/90 hover:bg-cyan-900 border border-cyan-500/40 text-cyan-300 hover:text-white flex items-center justify-center gap-1 cursor-pointer transition-all active:scale-95 text-xs font-mono-cyber font-medium"
+                              title="Buka Rincian Kinerja Terperinci Waspang ini"
+                            >
+                              <Eye className="w-3.5 h-3.5" />
+                              <span>Rincian</span>
+                            </button>
+
+                            {/* Toggle Expand Button */}
                             <button
                               type="button"
                               onClick={() => toggleWaspangExpand(waspangKey)}
-                              className="col-span-2 sm:col-span-4 lg:col-span-1 h-8 px-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white flex items-center justify-center cursor-pointer transition-colors"
-                              title="Buka / Tutup Rincian Kendala & Aktivitas"
+                              className="col-span-1 h-8 px-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white flex items-center justify-center cursor-pointer transition-colors"
+                              title="Buka / Tutup Ringkasan di Halaman"
                             >
                               {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                             </button>
@@ -917,6 +1009,18 @@ export const AdminWeeklyRecap: React.FC<AdminWeeklyRecapProps> = ({
                                     </button>
                                   ))}
                               </div>
+                            </div>
+
+                            {/* Quick Action: Buka Rincian Modal */}
+                            <div className="pt-2 border-t border-slate-800/80 flex items-center justify-end">
+                              <button
+                                type="button"
+                                onClick={() => setSelectedWaspangModal({ waspangName: waspang.waspangName, areaName: area.areaName })}
+                                className="px-3 py-1.5 rounded-lg bg-cyan-950/80 hover:bg-cyan-900 border border-cyan-500/40 text-cyan-300 hover:text-white text-xs font-mono-cyber flex items-center gap-1.5 transition-all cursor-pointer font-medium"
+                              >
+                                <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
+                                <span>Buka Rincian Fisik &amp; Analisis Kinerja Lengkap {waspang.waspangName} ↗</span>
+                              </button>
                             </div>
                           </div>
                         )}
@@ -1158,6 +1262,40 @@ export const AdminWeeklyRecap: React.FC<AdminWeeklyRecapProps> = ({
 
           </div>
         </div>
+      )}
+
+      {/* MODAL INTERAKTIF: RINCIAN KPI TERPERINCI (Klik Kartu KPI) */}
+      {activeKpiModal && (
+        <KpiDetailModal
+          type={activeKpiModal}
+          recapData={recapData}
+          filteredReports={filteredReports}
+          periodLabel={periodLabel}
+          onClose={() => setActiveKpiModal(null)}
+          onSelectReport={(rep) => {
+            setActiveKpiModal(null);
+            if (onSelectReport) onSelectReport(rep);
+          }}
+          onSelectWaspang={(wName, aName) => {
+            setActiveKpiModal(null);
+            setSelectedWaspangModal({ waspangName: wName, areaName: aName });
+          }}
+        />
+      )}
+
+      {/* MODAL INTERAKTIF: RINCIAN KINERJA & PROGRES FISIK WASPANG TERPERINCI (Klik Baris / Nama Waspang) */}
+      {selectedWaspangModal && (
+        <WaspangDetailModal
+          waspangName={selectedWaspangModal.waspangName}
+          areaName={selectedWaspangModal.areaName}
+          recapData={recapData}
+          periodLabel={periodLabel}
+          allReports={filteredReports}
+          onClose={() => setSelectedWaspangModal(null)}
+          onSelectReport={(rep) => {
+            if (onSelectReport) onSelectReport(rep);
+          }}
+        />
       )}
 
     </div>

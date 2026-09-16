@@ -291,10 +291,12 @@ export default function App() {
         pulling288: '',
         pulling288GL: '',
         pulling144: '',
+        pulling144GL: '',
         pulling96: '',
         pulling96GL: '',
         pulling48: '',
         pulling24: '',
+        pulling12: '',
         pullingCoax: '',
       },
       instalasiHH: {
@@ -312,6 +314,7 @@ export default function App() {
         hb120x120: '',
       },
       instalasiMH: {
+        mh60x60: '',
         mh80x80: '',
         mh100x100: '',
         mh110x110: '',

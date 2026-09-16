@@ -6,6 +6,7 @@ import type { WeeklyRecapData } from '../utils/whatsapp';
 interface WaspangPerformanceChartProps {
   recapData: WeeklyRecapData;
   periodLabel: string;
+  onSelectWaspang?: (waspangName: string, areaName: string) => void;
 }
 
 interface TableDataItem {
@@ -64,6 +65,7 @@ function getScoreCategory(score: number): {
 export const WaspangPerformanceChart: React.FC<WaspangPerformanceChartProps> = ({
   recapData,
   periodLabel,
+  onSelectWaspang,
 }) => {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const [isCapturing, setIsCapturing] = useState(false);
@@ -215,6 +217,7 @@ export const WaspangPerformanceChart: React.FC<WaspangPerformanceChartProps> = (
             </div>
             <p className="text-xs text-slate-400 font-mono-cyber">
               Target Periode: <span className="text-cyan-300 font-bold">{daysInPeriod} Hari</span> ({periodLabel}) • Target Penuh: <span className="text-white font-semibold">100 Poin</span>
+              <span className="hidden sm:inline text-cyan-400/90 ml-2 font-medium">• 💡 Klik baris Waspang untuk melihat rincian kinerja terperinci</span>
             </p>
           </div>
 
@@ -323,9 +326,11 @@ export const WaspangPerformanceChart: React.FC<WaspangPerformanceChartProps> = (
                   return (
                     <tr
                       key={`${item.area}-${item.rawName}`}
-                      className={`transition-colors hover:bg-slate-800/40 ${
+                      onClick={() => onSelectWaspang?.(item.rawName, item.area)}
+                      className={`transition-colors cursor-pointer group hover:bg-cyan-950/40 active:bg-cyan-900/50 ${
                         isEven ? 'bg-[#060e1c]' : 'bg-[#091426]'
                       }`}
+                      title={`Klik untuk melihat rincian kinerja lengkap ${item.rawName}`}
                     >
                       {/* 1. No */}
                       <td className="py-2.5 px-1 sm:px-2 text-center font-bold text-slate-400 text-[11px]">
@@ -334,8 +339,13 @@ export const WaspangPerformanceChart: React.FC<WaspangPerformanceChartProps> = (
 
                       {/* 2. Nama Waspang */}
                       <td className="py-2.5 px-2 sm:px-3 overflow-hidden">
-                        <div className="font-cyber font-bold text-white text-xs sm:text-sm tracking-wide truncate" title={item.rawName}>
-                          {item.rawName}
+                        <div className="flex items-center gap-1.5">
+                          <div className="font-cyber font-bold text-white text-xs sm:text-sm tracking-wide truncate group-hover:text-cyan-300 transition-colors" title={item.rawName}>
+                            {item.rawName}
+                          </div>
+                          <span className="text-[10px] text-cyan-400 opacity-0 group-hover:opacity-100 transition-opacity hidden sm:inline shrink-0 font-mono-cyber">
+                            ↗ Rincian
+                          </span>
                         </div>
                         {item.projects.length > 0 && (
                           <div

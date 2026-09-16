@@ -53,10 +53,12 @@ export interface PullingProgress {
   pulling288: string;
   pulling288GL: string;
   pulling144: string;
+  pulling144GL?: string;
   pulling96: string;
   pulling96GL: string;
   pulling48: string;
   pulling24: string;
+  pulling12?: string;
   pullingCoax?: string;
 }
 
@@ -77,6 +79,7 @@ export interface HBProgress {
 }
 
 export interface MHProgress {
+  mh60x60?: string;
   mh80x80: string;
   mh100x100: string;
   mh110x110?: string;

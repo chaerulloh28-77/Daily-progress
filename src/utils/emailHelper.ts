@@ -144,9 +144,12 @@ export const formatReportRecapForEmail = (report: DailyReportFormData): string =
     report.pulling?.pulling288 ? `288 Core: ${report.pulling.pulling288}m` : '',
     report.pulling?.pulling288GL ? `288 GL: ${report.pulling.pulling288GL}m` : '',
     report.pulling?.pulling144 ? `144 Core: ${report.pulling.pulling144}m` : '',
+    report.pulling?.pulling144GL ? `144 GL: ${report.pulling.pulling144GL}m` : '',
     report.pulling?.pulling96 ? `96 Core: ${report.pulling.pulling96}m` : '',
+    report.pulling?.pulling96GL ? `96 GL: ${report.pulling.pulling96GL}m` : '',
     report.pulling?.pulling48 ? `48 Core: ${report.pulling.pulling48}m` : '',
     report.pulling?.pulling24 ? `24 Core: ${report.pulling.pulling24}m` : '',
+    report.pulling?.pulling12 ? `12 Core: ${report.pulling.pulling12}m` : '',
   ].filter(Boolean).join(', ') || '-';
 
   const atbVal = report.tiangGalvanisHDPE?.galvanisATB ?? report.tiangGalvanisHDPE?.galvanis4Inch;
@@ -169,6 +172,7 @@ export const formatReportRecapForEmail = (report: DailyReportFormData): string =
     report.instalasiHB?.hb100x100 ? `HB 100x100: ${report.instalasiHB.hb100x100}` : '',
     report.instalasiHB?.hb110x110 ? `HB 110x110: ${report.instalasiHB.hb110x110}` : '',
     report.instalasiHB?.hb120x120 ? `HB 120x120: ${report.instalasiHB.hb120x120}` : '',
+    report.instalasiMH?.mh60x60 ? `MH 60x60: ${report.instalasiMH.mh60x60}` : '',
     report.instalasiMH?.mh80x80 ? `MH 80x80: ${report.instalasiMH.mh80x80}` : '',
     report.instalasiMH?.mh100x100 ? `MH 100x100: ${report.instalasiMH.mh100x100}` : '',
     report.instalasiMH?.mh110x110 ? `MH 110x110: ${report.instalasiMH.mh110x110}` : '',
@@ -195,11 +199,19 @@ export const formatReportRecapForEmail = (report: DailyReportFormData): string =
       : []),
     ...(report.keteranganPengamanan ? [`   • Catatan Pengamanan: ${report.keteranganPengamanan}`] : []),
     `👷 WASPANG / PENGAWAS : ${report.waspangName || 'Belum diisi'}`,
-    `📅 TANGGAL LAPORAN    : ${report.reportDate} (Hari ke-${report.dayNumber || '1'})`,
-    `🌦️ KONDISI CUACA      : ${report.weatherCondition || 'Normal'}`,
-    report.durasiPekerjaan
-      ? `⏱️ DURASI PEKERJAAN  : ${report.durasiPekerjaan} Hari (Start: ${report.startDate || '-'})`
-      : `⏱️ PERIODE PROJECT    : ${report.startDate || '-'} s/d ${report.endDate || '-'}`,
+    ...(report.projectCategory === 'Pengamanan'
+      ? [
+          `📅 TANGGAL PELAKSANAAN: ${report.reportDate}`,
+          ...(report.endDate ? [`🏁 TANGGAL SELESAI   : ${report.endDate}`] : []),
+          `🌦️ KONDISI CUACA      : ${report.weatherCondition || 'Normal'}`,
+        ]
+      : [
+          `📅 TANGGAL LAPORAN    : ${report.reportDate} (Hari ke-${report.dayNumber || '1'})`,
+          `🌦️ KONDISI CUACA      : ${report.weatherCondition || 'Normal'}`,
+          report.durasiPekerjaan
+            ? `⏱️ DURASI PEKERJAAN  : ${report.durasiPekerjaan} Hari (Start: ${report.startDate || '-'})`
+            : `⏱️ PERIODE PROJECT    : ${report.startDate || '-'} s/d ${report.endDate || '-'}`,
+        ]),
     `--------------------------------------------------`,
     `📊 REKAP PROGRES UTAMA:`,
     `• Total Progres Sipil : ${report.totalProgressSipil || 0} Meter`,

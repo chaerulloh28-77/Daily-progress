@@ -25,7 +25,7 @@ import {
   Shield
 } from 'lucide-react';
 import { DailyReportFormData, CurrentUser } from '../types';
-import { calculateTotals, shareToWhatsApp, generateWhatsAppReportText } from '../utils/whatsapp';
+import { calculateTotals, shareToWhatsApp, generateWhatsAppReportText, isPengamananReport } from '../utils/whatsapp';
 
 interface ReportSummaryModalProps {
   report: DailyReportFormData | null;
@@ -55,6 +55,7 @@ export const ReportSummaryModal: React.FC<ReportSummaryModalProps> = ({
   const isOwner = !!(currentUser?.email && author && currentUser.email.toLowerCase() === author.toLowerCase());
   const isAdmin = currentUser?.role === 'admin';
   const canModify = isAdmin || isOwner || !author;
+  const isPengamanan = isPengamananReport(report);
 
   const { totalBoring, totalPulling, totalHH, totalHB, totalMH, totalMB, totalPit } =
     calculateTotals(report);
@@ -239,123 +240,166 @@ export const ReportSummaryModal: React.FC<ReportSummaryModalProps> = ({
             )}
           </div>
 
-          {/* Quick Metrics */}
-          <div className="space-y-2">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-              <div className="bg-cyan-950/30 border border-cyan-500/30 p-3 rounded-xl">
-                <span className="text-[10px] uppercase font-mono-cyber text-cyan-300 block mb-1">
-                  Total Sipil Hari Ini
-                </span>
-                <div className="text-lg font-bold font-mono-cyber text-white">
-                  {report.totalProgressSipil || '0'} <span className="text-xs font-normal text-cyan-400">m</span>
-                </div>
-              </div>
-              <div className="bg-emerald-950/30 border border-emerald-500/30 p-3 rounded-xl">
-                <span className="text-[10px] uppercase font-mono-cyber text-emerald-300 block mb-1">
-                  Total Kabel Hari Ini
-                </span>
-                <div className="text-lg font-bold font-mono-cyber text-white">
-                  {report.totalProgressKabel || '0'} <span className="text-xs font-normal text-emerald-400">m</span>
-                </div>
-              </div>
-              <div className="bg-blue-950/30 border border-blue-500/30 p-3 rounded-xl">
-                <span className="text-[10px] uppercase font-mono-cyber text-blue-300 block mb-1">
-                  Total Kabel Coax
-                </span>
-                <div className="text-lg font-bold font-mono-cyber text-white">
-                  {report.totalProgressKabelCoax || report.pulling?.pullingCoax || '0'} <span className="text-xs font-normal text-blue-400">m</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Pit Metrics: HH, HB, MH */}
-            <div className="grid grid-cols-3 gap-2">
-              <div className="bg-amber-950/25 border border-amber-500/30 p-2.5 rounded-xl">
-                <span className="text-[9px] sm:text-[10px] uppercase font-mono-cyber text-amber-300 block mb-0.5">
-                  Total HH
-                </span>
-                <div className="text-base font-bold font-mono-cyber text-white">
-                  {displayHH} <span className="text-xs font-normal text-amber-400">Pcs</span>
-                </div>
-              </div>
-              <div className="bg-orange-950/25 border border-orange-500/30 p-2.5 rounded-xl">
-                <span className="text-[9px] sm:text-[10px] uppercase font-mono-cyber text-orange-300 block mb-0.5">
-                  Total HB
-                </span>
-                <div className="text-base font-bold font-mono-cyber text-white">
-                  {displayHB} <span className="text-xs font-normal text-orange-400">Pcs</span>
-                </div>
-              </div>
-              <div className="bg-purple-950/25 border border-purple-500/30 p-2.5 rounded-xl">
-                <span className="text-[9px] sm:text-[10px] uppercase font-mono-cyber text-purple-300 block mb-0.5">
-                  Total MH
-                </span>
-                <div className="text-base font-bold font-mono-cyber text-white">
-                  {displayMH} <span className="text-xs font-normal text-purple-400">Pcs</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Detailed Breakdown Recap */}
-          <div className="bg-[#050b14] p-3 rounded-xl border border-slate-800 space-y-2">
-            <h4 className="font-cyber font-semibold text-slate-200 text-xs flex items-center justify-between">
-              <span>Rincian Item Pekerjaan</span>
-              <span className="text-[10px] font-mono-cyber text-emerald-400">VERIFIED</span>
-            </h4>
-            
-            <div className="space-y-1.5 text-[11px] font-mono-cyber">
-              <div className="flex justify-between py-1 border-b border-slate-800/60">
-                <span className="text-slate-400">I. Pekerjaan Boring:</span>
-                <span className="text-cyan-300 font-semibold">{totalBoring} meter</span>
-              </div>
-              <div className="flex justify-between py-1 border-b border-slate-800/60">
-                <span className="text-slate-400">II. Penarikan Kabel FO:</span>
-                <span className="text-emerald-300 font-semibold">{totalPulling} meter</span>
-              </div>
-              <div className="flex justify-between py-1 border-b border-slate-800/60">
-                <span className="text-slate-400">   • Kabel Coaxial:</span>
-                <span className="text-blue-300 font-semibold">{report.pulling?.pullingCoax || report.totalProgressKabelCoax || 0} meter</span>
-              </div>
-              <div className="flex justify-between py-1 border-b border-slate-800/60">
-                <span className="text-slate-400">III. Total Pit (HH,HB,MH,MB):</span>
-                <span className="text-amber-300 font-semibold">{totalPit} Pcs</span>
-              </div>
-              <div className="flex justify-between py-1 border-b border-slate-800/60">
-                <span className="text-slate-400">IV. Tiang Bersama:</span>
-                <span className="text-slate-200">{report.tiangGalvanisHDPE.tiangBersama || 0} Pcs</span>
-              </div>
-              {(report.tiangGalvanisHDPE.galvanis2Inch || (report.tiangGalvanisHDPE.galvanisATB ?? report.tiangGalvanisHDPE.galvanis4Inch)) ? (
-                <div className="flex justify-between py-1 border-b border-slate-800/60">
-                  <span className="text-slate-400">   • Pipa Galvanis:</span>
-                  <span className="text-slate-200">
-                    {[
-                      report.tiangGalvanisHDPE.galvanis2Inch ? `2": ${report.tiangGalvanisHDPE.galvanis2Inch}m` : '',
-                      (report.tiangGalvanisHDPE.galvanisATB ?? report.tiangGalvanisHDPE.galvanis4Inch)
-                        ? `ATB (${report.tiangGalvanisHDPE.galvanisATBOption || 'Galv 4"'}): ${report.tiangGalvanisHDPE.galvanisATB ?? report.tiangGalvanisHDPE.galvanis4Inch}m`
-                        : '',
-                    ].filter(Boolean).join(', ')}
+          {/* Quick Metrics & Detailed Breakdown Recap (Khusus Non-Pengamanan) */}
+          {!isPengamanan ? (
+            <div className="space-y-2">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                <div className="bg-cyan-950/30 border border-cyan-500/30 p-3 rounded-xl">
+                  <span className="text-[10px] uppercase font-mono-cyber text-cyan-300 block mb-1">
+                    Total Sipil Hari Ini
                   </span>
+                  <div className="text-lg font-bold font-mono-cyber text-white">
+                    {report.totalProgressSipil || '0'} <span className="text-xs font-normal text-cyan-400">m</span>
+                  </div>
                 </div>
-              ) : null}
-              <div className="flex justify-between py-1">
-                <span className="text-slate-400">V. Dismantling Kabel:</span>
-                <span className="text-slate-200">{report.dismantling.dismantleKabel || 0} m</span>
+                <div className="bg-emerald-950/30 border border-emerald-500/30 p-3 rounded-xl">
+                  <span className="text-[10px] uppercase font-mono-cyber text-emerald-300 block mb-1">
+                    Total Kabel Hari Ini
+                  </span>
+                  <div className="text-lg font-bold font-mono-cyber text-white">
+                    {report.totalProgressKabel || '0'} <span className="text-xs font-normal text-emerald-400">m</span>
+                  </div>
+                </div>
+                <div className="bg-blue-950/30 border border-blue-500/30 p-3 rounded-xl">
+                  <span className="text-[10px] uppercase font-mono-cyber text-blue-300 block mb-1">
+                    Total Kabel Coax
+                  </span>
+                  <div className="text-lg font-bold font-mono-cyber text-white">
+                    {report.totalProgressKabelCoax || report.pulling?.pullingCoax || '0'} <span className="text-xs font-normal text-blue-400">m</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Pit Metrics: HH, HB, MH */}
+              <div className="grid grid-cols-3 gap-2">
+                <div className="bg-amber-950/25 border border-amber-500/30 p-2.5 rounded-xl">
+                  <span className="text-[9px] sm:text-[10px] uppercase font-mono-cyber text-amber-300 block mb-0.5">
+                    Total HH
+                  </span>
+                  <div className="text-base font-bold font-mono-cyber text-white">
+                    {displayHH} <span className="text-xs font-normal text-amber-400">Pcs</span>
+                  </div>
+                </div>
+                <div className="bg-orange-950/25 border border-orange-500/30 p-2.5 rounded-xl">
+                  <span className="text-[9px] sm:text-[10px] uppercase font-mono-cyber text-orange-300 block mb-0.5">
+                    Total HB
+                  </span>
+                  <div className="text-base font-bold font-mono-cyber text-white">
+                    {displayHB} <span className="text-xs font-normal text-orange-400">Pcs</span>
+                  </div>
+                </div>
+                <div className="bg-purple-950/25 border border-purple-500/30 p-2.5 rounded-xl">
+                  <span className="text-[9px] sm:text-[10px] uppercase font-mono-cyber text-purple-300 block mb-0.5">
+                    Total MH
+                  </span>
+                  <div className="text-base font-bold font-mono-cyber text-white">
+                    {displayMH} <span className="text-xs font-normal text-purple-400">Pcs</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Detailed Breakdown Recap */}
+              <div className="bg-[#050b14] p-3 rounded-xl border border-slate-800 space-y-2">
+                <h4 className="font-cyber font-semibold text-slate-200 text-xs flex items-center justify-between">
+                  <span>Rincian Item Pekerjaan</span>
+                  <span className="text-[10px] font-mono-cyber text-emerald-400">VERIFIED</span>
+                </h4>
+                
+                <div className="space-y-1.5 text-[11px] font-mono-cyber">
+                  <div className="flex justify-between py-1 border-b border-slate-800/60">
+                    <span className="text-slate-400">I. Pekerjaan Boring:</span>
+                    <span className="text-cyan-300 font-semibold">{totalBoring} meter</span>
+                  </div>
+                  <div className="flex justify-between py-1 border-b border-slate-800/60">
+                    <span className="text-slate-400">II. Penarikan Kabel FO:</span>
+                    <span className="text-emerald-300 font-semibold">{totalPulling} meter</span>
+                  </div>
+                  <div className="flex justify-between py-1 border-b border-slate-800/60">
+                    <span className="text-slate-400">   • Kabel Coaxial:</span>
+                    <span className="text-blue-300 font-semibold">{report.pulling?.pullingCoax || report.totalProgressKabelCoax || 0} meter</span>
+                  </div>
+                  <div className="flex justify-between py-1 border-b border-slate-800/60">
+                    <span className="text-slate-400">III. Total Pit (HH,HB,MH,MB):</span>
+                    <span className="text-amber-300 font-semibold">{totalPit} Pcs</span>
+                  </div>
+                  <div className="flex justify-between py-1 border-b border-slate-800/60">
+                    <span className="text-slate-400">IV. Tiang Bersama:</span>
+                    <span className="text-slate-200">{report.tiangGalvanisHDPE.tiangBersama || 0} Pcs</span>
+                  </div>
+                  {(report.tiangGalvanisHDPE.galvanis2Inch || (report.tiangGalvanisHDPE.galvanisATB ?? report.tiangGalvanisHDPE.galvanis4Inch)) ? (
+                    <div className="flex justify-between py-1 border-b border-slate-800/60">
+                      <span className="text-slate-400">   • Pipa Galvanis:</span>
+                      <span className="text-slate-200">
+                        {[
+                          report.tiangGalvanisHDPE.galvanis2Inch ? `2": ${report.tiangGalvanisHDPE.galvanis2Inch}m` : '',
+                          (report.tiangGalvanisHDPE.galvanisATB ?? report.tiangGalvanisHDPE.galvanis4Inch)
+                            ? `ATB (${report.tiangGalvanisHDPE.galvanisATBOption || 'Galv 4"'}): ${report.tiangGalvanisHDPE.galvanisATB ?? report.tiangGalvanisHDPE.galvanis4Inch}m`
+                            : '',
+                        ].filter(Boolean).join(', ')}
+                      </span>
+                    </div>
+                  ) : null}
+                  <div className="flex justify-between py-1">
+                    <span className="text-slate-400">V. Dismantling Kabel:</span>
+                    <span className="text-slate-200">{report.dismantling.dismantleKabel || 0} m</span>
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
-
-          {/* Remarks Note */}
-          {report.remarks && (
-            <div className="bg-[#050b14] p-3 rounded-xl border border-purple-500/30">
-              <span className="text-[10px] uppercase font-mono-cyber text-purple-300 font-semibold block mb-1">
-                Remarks / Catatan Pekerjaan
-              </span>
-              <p className="text-xs text-slate-200 leading-relaxed whitespace-pre-wrap">
-                {report.remarks}
-              </p>
+          ) : (
+            <div className="p-3.5 rounded-xl bg-amber-950/30 border border-amber-500/40 flex items-start gap-2.5 text-xs font-mono-cyber text-amber-200">
+              <Shield className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+              <div>
+                <span className="font-bold font-cyber text-amber-300 block mb-0.5">Project Kategori Pengamanan</span>
+                <span className="text-slate-300 text-[11px] leading-relaxed">
+                  Laporan pengawasan aset jaringan & utilitas. Item penarikan kabel, instalasi pit, tiang/galvanis/HDPE, dan dismantling dirangkum di dalam Remarks.
+                </span>
+              </div>
             </div>
           )}
+
+          {/* Remarks Section */}
+          <div className="bg-[#050b14] p-3.5 rounded-xl border border-purple-500/30 space-y-2">
+            <span className="text-[10px] uppercase font-mono-cyber text-purple-300 font-semibold block mb-1">
+              Remarks {isPengamanan ? '& Rincian Item Pekerjaan' : '/ Catatan Pekerjaan'}
+            </span>
+
+            {isPengamanan && (
+              <div className="bg-purple-950/20 border border-purple-500/20 rounded-lg p-2.5 space-y-1 text-xs font-mono-cyber">
+                <div className="flex justify-between py-0.5 border-b border-purple-500/10 text-slate-300">
+                  <span className="text-slate-400">• Penarikan Kabel / Pulling:</span>
+                  <span className="text-emerald-300 font-semibold">
+                    {totalPulling || report.totalProgressKabel || 0} m
+                    {report.pulling?.pullingCoax ? ` (Coax: ${report.pulling.pullingCoax}m)` : ''}
+                  </span>
+                </div>
+                <div className="flex justify-between py-0.5 border-b border-purple-500/10 text-slate-300">
+                  <span className="text-slate-400">• Instalasi Pit (HH, HB, MH):</span>
+                  <span className="text-amber-300 font-semibold">
+                    HH {report.totalProgressHH || totalHH || 0} Pcs, HB {report.totalProgressHB || totalHB || 0} Pcs, MH {report.totalProgressMH || totalMH || 0} Pcs
+                  </span>
+                </div>
+                <div className="flex justify-between py-0.5 border-b border-purple-500/10 text-slate-300">
+                  <span className="text-slate-400">• Tiang, Galvanis & HDPE:</span>
+                  <span className="text-cyan-300 font-semibold">
+                    Tiang {report.tiangGalvanisHDPE?.tiangBersama || 0} Pcs, Galv {[report.tiangGalvanisHDPE?.galvanis2Inch ? `2": ${report.tiangGalvanisHDPE.galvanis2Inch}m` : '', (report.tiangGalvanisHDPE?.galvanisATB ?? report.tiangGalvanisHDPE?.galvanis4Inch) ? `ATB: ${report.tiangGalvanisHDPE?.galvanisATB ?? report.tiangGalvanisHDPE?.galvanis4Inch}m` : ''].filter(Boolean).join(', ') || '0m'}, HDPE {report.tiangGalvanisHDPE?.instalHDPE || 0}m
+                  </span>
+                </div>
+                <div className="flex justify-between py-0.5 text-slate-300">
+                  <span className="text-slate-400">• Dismantling (Bongkar):</span>
+                  <span className="text-rose-300 font-semibold">
+                    Kabel {report.dismantling?.dismantleKabel || 0} m, Tiang {report.dismantling?.dismantleTiang || 0} Pcs
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {report.remarks && (
+              <p className="text-xs text-slate-200 leading-relaxed whitespace-pre-wrap pt-1">
+                {report.remarks}
+              </p>
+            )}
+          </div>
 
           {/* Field Issues Note */}
           <div className="bg-[#050b14] p-3 rounded-xl border border-slate-800">

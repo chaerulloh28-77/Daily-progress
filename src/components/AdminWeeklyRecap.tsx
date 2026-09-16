@@ -669,7 +669,7 @@ export const AdminWeeklyRecap: React.FC<AdminWeeklyRecapProps> = ({
         </div>
       </div>
 
-      {/* VISUALISASI GRAFIK PERFORMA WASPANG (BAR CHART) */}
+      {/* VISUALISASI GRAFIK PERFORMA WASPANG (PIE & DONUT CHART) */}
       <WaspangPerformanceChart
         recapData={recapData}
         periodLabel={periodLabel}

@@ -174,7 +174,9 @@ export const ReportSummaryModal: React.FC<ReportSummaryModalProps> = ({
             )}
 
             <div className="flex items-center justify-between text-slate-300">
-              <span className="text-slate-400 font-mono-cyber">Nama Project:</span>
+              <span className="text-slate-400 font-mono-cyber">
+                {report.projectCategory === 'Pengamanan' ? 'Jenis Pengaman:' : 'Nama Project:'}
+              </span>
               <span className="font-cyber font-bold text-cyan-300 text-xs sm:text-sm truncate max-w-[200px]">
                 {report.projectName || 'Project Lapangan'}
               </span>

@@ -875,18 +875,23 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
           </div>
         </div>
 
-        {/* Input Nama Titik/Ruas Pengamanan, Area, Waspang, Tanggal, Cuaca */}
+        {/* Input Jenis Pengaman, Area, Waspang, Tanggal, Cuaca */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
-          {/* Nama Titik/Ruas Pengamanan */}
+          {/* Jenis Pengaman */}
           <div className="sm:col-span-2 lg:col-span-1">
             <div className="flex items-center justify-between mb-1.5 h-5">
               <label 
                 htmlFor="input-pengamanan-name" 
                 className="flex items-center gap-1.5 text-xs font-mono-cyber text-amber-300 uppercase tracking-wider font-semibold truncate"
               >
-                <Building2 className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                <span className="truncate">Nama Titik / Ruas Pengamanan <span className="text-amber-400">*</span></span>
+                <Shield className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                <span className="truncate">Jenis Pengaman <span className="text-amber-400">*</span></span>
               </label>
+              {formData.jenisPengamanan && (
+                <span className="text-[10px] font-mono-cyber text-amber-300 bg-amber-950/80 border border-amber-500/40 px-1.5 py-0.2 rounded shrink-0 font-bold truncate max-w-[140px]">
+                  {formData.jenisPengamanan}
+                </span>
+              )}
             </div>
             <div className="relative">
               <input
@@ -895,7 +900,7 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
                 required
                 value={formData.projectName}
                 onChange={(e) => handleTopLevelChange('projectName', e.target.value)}
-                placeholder="Contoh: Pengamanan Utilitas Jl. Margonda / Trotoar..."
+                placeholder="Pilih dari opsi jenis pengamanan di bawah atau ketik di sini..."
                 className="w-full h-10 bg-[#050b14] border border-amber-500/40 focus:border-amber-400 rounded-xl px-3.5 text-xs sm:text-sm text-slate-100 font-mono-cyber focus:outline-none focus:ring-1 focus:ring-amber-400 transition-colors"
               />
             </div>
@@ -1027,7 +1032,11 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
   const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.projectName || !formData.projectName.trim()) {
-      setValidationError('Silakan ketikkan Nama Project terlebih dahulu.');
+      setValidationError(
+        formData.projectCategory === 'Pengamanan'
+          ? 'Silakan tentukan Jenis Pengaman terlebih dahulu.'
+          : 'Silakan ketikkan Nama Project terlebih dahulu.'
+      );
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
@@ -1240,9 +1249,23 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
                     type="button"
                     onClick={() => {
                       const willBeSelected = isSelected ? '' : opt.id;
+                      let updatedProjectName = formData.projectName;
+                      if (willBeSelected) {
+                        if (opt.id === 'Perapihan Asset' && formData.subJenisPerapihanAsset && formData.subJenisPerapihanAsset.length > 0) {
+                          updatedProjectName = `Perapihan Asset (${formData.subJenisPerapihanAsset.join(', ')})`;
+                        } else {
+                          updatedProjectName = opt.id;
+                        }
+                      } else {
+                        // Jika di-deselect dan nilai projectName sebelumnya adalah opsi ini, reset ke kosong
+                        if (formData.projectName === opt.id || formData.projectName.startsWith(opt.id)) {
+                          updatedProjectName = '';
+                        }
+                      }
                       onChange({
                         ...formData,
                         jenisPengamanan: willBeSelected,
+                        projectName: updatedProjectName,
                       });
                     }}
                     className={`flex items-start gap-2.5 p-3 rounded-xl border text-left transition-all cursor-pointer group ${
@@ -1308,10 +1331,13 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
                           const updatedSubs = isChecked
                             ? currentSubs.filter((item) => item !== sub.id)
                             : [...currentSubs, sub.id];
+                          const subText = updatedSubs.length > 0 ? ` (${updatedSubs.join(', ')})` : '';
+                          const newProjectName = `Perapihan Asset${subText}`;
                           onChange({
                             ...formData,
                             jenisPengamanan: 'Perapihan Asset',
                             subJenisPerapihanAsset: updatedSubs,
+                            projectName: newProjectName,
                           });
                         }}
                         className={`flex items-center gap-2 p-2.5 rounded-lg border text-left transition-all cursor-pointer ${

@@ -17,6 +17,7 @@ import type { WeeklyRecapData } from '../utils/whatsapp';
 interface WaspangPerformanceChartProps {
   recapData: WeeklyRecapData;
   periodLabel: string;
+  selectedArea?: string;
   onSelectWaspang?: (waspangName: string, areaName: string) => void;
 }
 
@@ -131,6 +132,7 @@ const AREA_COLORS: Record<string, string> = {
 export const WaspangPerformanceChart: React.FC<WaspangPerformanceChartProps> = ({
   recapData,
   periodLabel,
+  selectedArea = 'All',
   onSelectWaspang,
 }) => {
   const chartContainerRef = useRef<HTMLDivElement>(null);
@@ -141,6 +143,8 @@ export const WaspangPerformanceChart: React.FC<WaspangPerformanceChartProps> = (
   // Hover states for interactive tooltips
   const [hoveredDonutIndex, setHoveredDonutIndex] = useState<number | null>(null);
   const [hoveredPieIndex, setHoveredPieIndex] = useState<number | null>(null);
+
+  const isSpecificArea = Boolean(selectedArea && selectedArea !== 'All');
 
   const daysInPeriod = React.useMemo(() => {
     return calculateDaysInPeriod(recapData.startDate, recapData.endDate);
@@ -154,6 +158,9 @@ export const WaspangPerformanceChart: React.FC<WaspangPerformanceChartProps> = (
 
     recapData.areas.forEach((area) => {
       if (!area?.waspangs) return;
+      if (isSpecificArea && area.areaName.toLowerCase() !== selectedArea.toLowerCase()) {
+        return;
+      }
       area.waspangs.forEach((w) => {
         const anyW = w as unknown as { dates?: unknown; reports?: unknown[] };
         let daysReported = 0;
@@ -204,7 +211,7 @@ export const WaspangPerformanceChart: React.FC<WaspangPerformanceChartProps> = (
     });
 
     return items.sort((a, b) => b.score - a.score || b.reports - a.reports || a.rawName.localeCompare(b.rawName));
-  }, [recapData, daysInPeriod]);
+  }, [recapData, daysInPeriod, isSpecificArea, selectedArea]);
 
   // Team average score
   const avgScore = React.useMemo(() => {
@@ -263,8 +270,31 @@ export const WaspangPerformanceChart: React.FC<WaspangPerformanceChartProps> = (
     return list.filter((item) => item.value > 0);
   }, [tableData]);
 
-  // 2. DATA FOR PIE CHART: Area Contribution / Activity Distribution
+  // 2. DATA FOR PIE CHART: By Waspang if specific Area, by Area if All
+  const WASPANG_PALETTE = [
+    '#06b6d4', '#3b82f6', '#8b5cf6', '#10b981', '#f59e0b',
+    '#ec4899', '#14b8a6', '#6366f1', '#f43f5e', '#84cc16'
+  ];
+
   const pieAreaData: PieSliceData[] = React.useMemo(() => {
+    const totalReports = tableData.reduce((acc, curr) => acc + curr.reports, 0) || 1;
+
+    if (isSpecificArea) {
+      return tableData.map((w, idx) => {
+        const percentage = Math.round((w.reports / totalReports) * 100);
+        const color = WASPANG_PALETTE[idx % WASPANG_PALETTE.length];
+        return {
+          name: w.rawName,
+          value: w.reports,
+          waspangCount: 1,
+          percentage,
+          avgScore: w.score,
+          color,
+          waspangs: [w],
+        };
+      });
+    }
+
     const areaMap: Record<
       string,
       {
@@ -282,8 +312,6 @@ export const WaspangPerformanceChart: React.FC<WaspangPerformanceChartProps> = (
       areaMap[w.area].waspangs.add(w.rawName);
       areaMap[w.area].items.push(w);
     });
-
-    const totalReports = tableData.reduce((acc, curr) => acc + curr.reports, 0) || 1;
 
     return Object.entries(areaMap).map(([areaName, info]) => {
       const color = AREA_COLORS[areaName] || AREA_COLORS['Default'];
@@ -303,7 +331,7 @@ export const WaspangPerformanceChart: React.FC<WaspangPerformanceChartProps> = (
         waspangs: info.items,
       };
     });
-  }, [tableData]);
+  }, [tableData, isSpecificArea]);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -439,7 +467,13 @@ export const WaspangPerformanceChart: React.FC<WaspangPerformanceChartProps> = (
               </div>
               <h3 className="text-sm sm:text-base font-cyber font-bold text-white tracking-wide uppercase">
                 DIAGRAM KPI KEAKTIFAN &amp; KEPATUHAN LAPOR WASPANG
+                {isSpecificArea ? ` - ${selectedArea.toUpperCase()}` : ''}
               </h3>
+              {isSpecificArea && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-950/90 border border-blue-500/40 text-[10px] text-blue-300 font-mono-cyber">
+                  Khusus {selectedArea}
+                </span>
+              )}
               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-cyan-950/90 border border-cyan-500/40 text-[10px] text-cyan-300 font-mono-cyber">
                 <Sparkles className="w-3 h-3 text-cyan-400" />
                 Pie &amp; Donut View
@@ -717,7 +751,9 @@ export const WaspangPerformanceChart: React.FC<WaspangPerformanceChartProps> = (
               <div className="flex items-center gap-2">
                 <div className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse" />
                 <h4 className="text-xs sm:text-sm font-cyber font-bold text-white uppercase tracking-wider">
-                  PIE CHART: SEBARAN AKTIF PER AREA
+                  {isSpecificArea
+                    ? `PIE CHART: KONTRIBUSI LAPORAN WASPANG (${selectedArea.toUpperCase()})`
+                    : 'PIE CHART: SEBARAN AKTIF PER AREA'}
                 </h4>
               </div>
               <span className="text-[10px] font-mono-cyber text-slate-400">
@@ -802,10 +838,10 @@ export const WaspangPerformanceChart: React.FC<WaspangPerformanceChartProps> = (
                           className="font-bold text-white"
                           style={{ color: pieSlicesWithAngles[hoveredPieIndex].color }}
                         >
-                          Wilayah: {pieSlicesWithAngles[hoveredPieIndex].name}
+                          {isSpecificArea ? `Waspang: ${pieSlicesWithAngles[hoveredPieIndex].name}` : `Wilayah: ${pieSlicesWithAngles[hoveredPieIndex].name}`}
                         </span>
                         <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-300">
-                          {pieSlicesWithAngles[hoveredPieIndex].waspangCount} Personil
+                          {isSpecificArea ? `${pieSlicesWithAngles[hoveredPieIndex].avgScore} Poin` : `${pieSlicesWithAngles[hoveredPieIndex].waspangCount} Personil`}
                         </span>
                       </div>
                       <div className="space-y-1 text-slate-300 text-[11px]">

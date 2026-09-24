@@ -202,6 +202,7 @@ interface KpiDetailModalProps {
   recapData: WeeklyRecapData;
   filteredReports: DailyReportFormData[];
   periodLabel: string;
+  defaultAreaFilter?: 'All' | 'Jabo 1' | 'Jabo 2' | 'Jabo 3';
   onClose: () => void;
   onSelectReport?: (report: DailyReportFormData) => void;
   onSelectWaspang?: (waspangName: string, areaName: string) => void;
@@ -212,12 +213,13 @@ export const KpiDetailModal: React.FC<KpiDetailModalProps> = ({
   recapData,
   filteredReports,
   periodLabel,
+  defaultAreaFilter = 'All',
   onClose,
   onSelectReport,
   onSelectWaspang,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
-  const [areaFilter, setAreaFilter] = useState<'All' | 'Jabo 1' | 'Jabo 2' | 'Jabo 3'>('All');
+  const [areaFilter, setAreaFilter] = useState<'All' | 'Jabo 1' | 'Jabo 2' | 'Jabo 3'>(defaultAreaFilter);
   const [categoryFilter, setCategoryFilter] = useState<'All' | 'Relokasi Goverment' | 'Pengamanan'>('All');
 
   // Filter reports specifically for this modal view
@@ -256,7 +258,7 @@ export const KpiDetailModal: React.FC<KpiDetailModalProps> = ({
       case 'waspangs':
         return {
           title: `Rincian Keaktifan & Performa Personil Waspang (${recapData.grandTotal.activeWaspangs} Personil)`,
-          subtitle: `Tinjauan keaktifan hari, jumlah laporan harian, dan capaian fisik per Pengawas Lapangan`,
+          subtitle: `Tinjauan keaktifan hari, jumlah laporan harian, dan pencapaian fisik per Pengawas Lapangan`,
           icon: <User className="w-5 h-5 text-blue-400" />,
           accent: 'blue',
         };
@@ -593,7 +595,7 @@ export const KpiDetailModal: React.FC<KpiDetailModalProps> = ({
               <div className="bg-[#050b14] border border-slate-800 rounded-xl p-4 space-y-3">
                 <h4 className="text-xs font-bold font-mono-cyber uppercase text-white tracking-wider flex items-center gap-1.5">
                   <Layers className="w-4 h-4 text-emerald-400" />
-                  Rincian Capaian Sipil per Area ({periodLabel})
+                  Rincian Pencapaian Sipil per Area ({periodLabel})
                 </h4>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                   {recapData.areas.map((a) => (
@@ -681,7 +683,7 @@ export const KpiDetailModal: React.FC<KpiDetailModalProps> = ({
               <div className="bg-[#050b14] border border-slate-800 rounded-xl p-4 space-y-3">
                 <h4 className="text-xs font-bold font-mono-cyber uppercase text-white tracking-wider flex items-center gap-1.5">
                   <Cable className="w-4 h-4 text-amber-400" />
-                  Rincian Capaian Penarikan Kabel per Area ({periodLabel})
+                  Rincian Pencapaian Penarikan Kabel per Area ({periodLabel})
                 </h4>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                   {recapData.areas.map((a) => (

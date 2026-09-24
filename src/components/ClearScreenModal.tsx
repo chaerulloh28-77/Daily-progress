@@ -158,7 +158,7 @@ export const ClearScreenModal: React.FC<ClearScreenModalProps> = ({
                   <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-red-400 group-hover:translate-x-1 transition-transform shrink-0" />
                 </div>
                 <p className="text-xs text-slate-400 mt-1.5 leading-relaxed">
-                  Kosongkan semua data dari awal: nama project, ID, tanggal, waspang, dan seluruh angka capaian untuk memulai form dari nol.
+                  Kosongkan semua data dari awal: nama project, ID, tanggal, waspang, dan seluruh angka pencapaian untuk memulai form dari nol.
                 </p>
                 <div className="flex items-center gap-2 mt-2 text-[11px] font-mono-cyber text-red-400/80">
                   <span>Bersih total seperti pertama kali dibuka</span>

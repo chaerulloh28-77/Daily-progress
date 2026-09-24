@@ -45,3 +45,20 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
 ::-webkit-scrollbar-thumb:hover {
   background: #06b6d4;
 }
+
+/* Fast and smooth section appearance without layout lag */
+@keyframes smoothFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-smooth-in {
+  animation: smoothFadeIn 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  will-change: opacity, transform;
+}

@@ -113,13 +113,6 @@ export default function App() {
   const [isClearScreenModalOpen, setIsClearScreenModalOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // Pastikan non-admin@gov.com tidak berada di tab admin
-  useEffect(() => {
-    if (!isSuperAdmin && activeTab === 'admin') {
-      setActiveTab('input');
-    }
-  }, [isSuperAdmin, activeTab]);
-
   // Sync projects to local storage
   useEffect(() => {
     localStorage.setItem('gov_network_projects', JSON.stringify(projects));
@@ -636,7 +629,7 @@ export default function App() {
         <div className={`w-full ${
           activeTab === 'admin' 
             ? 'max-w-6xl xl:max-w-7xl px-2 sm:px-4 md:px-6' 
-            : 'max-w-3xl px-2 sm:px-4'
+            : 'max-w-4xl px-2 sm:px-4'
         } min-h-[100dvh] flex flex-col bg-[#050b14] relative border-x border-slate-900/60 shadow-2xl shadow-cyan-950/20 transition-all duration-300`}>
           
           {/* Header Component */}
@@ -651,12 +644,42 @@ export default function App() {
             onTabChange={setActiveTab}
           />
 
+          {/* 1. Navigasi Utama (Top Bar) */}
+          <div className="px-1 sm:px-3 pt-3">
+            <div className="flex bg-gray-900 p-1.5 rounded-xl border border-gray-800 shadow-lg">
+              <button
+                type="button"
+                id="topbar-nav-input"
+                onClick={() => setActiveTab('input')}
+                className={`flex-1 flex items-center justify-center gap-2 py-3 text-sm font-semibold rounded-lg transition-all duration-300 cursor-pointer ${
+                  activeTab === 'input' 
+                    ? 'bg-blue-900/50 text-blue-400 border border-blue-800/50 shadow-inner' 
+                    : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800'
+                }`}
+              >
+                <span>📝</span> Input Harian
+              </button>
+              <button
+                type="button"
+                id="topbar-nav-admin"
+                onClick={() => setActiveTab('admin')}
+                className={`flex-1 flex items-center justify-center gap-2 py-3 text-sm font-semibold rounded-lg transition-all duration-300 cursor-pointer ${
+                  activeTab === 'admin' 
+                    ? 'bg-orange-900/50 text-orange-400 border border-orange-800/50 shadow-inner' 
+                    : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800'
+                }`}
+              >
+                <span>📊</span> Admin Rekap
+              </button>
+            </div>
+          </div>
+
           {/* Body Content / Form or Admin Rekap */}
           <main className="flex-1 px-1 sm:px-3 pt-3 pb-10">
             <MobileInstallBanner />
             <BackgroundStatusBanner />
             
-            {activeTab === 'admin' && isSuperAdmin ? (
+            {activeTab === 'admin' ? (
               <AdminWeeklyRecap
                 savedReports={savedReports}
                 currentUser={currentUser}

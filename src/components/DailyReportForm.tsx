@@ -33,7 +33,8 @@ import {
   Route,
   Footprints,
   Wrench,
-  FileText
+  FileText,
+  Activity
 } from 'lucide-react';
 import { 
   DailyReportFormData, 
@@ -171,16 +172,6 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
       tiangHdpe: open,
       dismantling: open,
     });
-  };
-
-  const handleNavigateSection = (sectionId: string, accordionKey?: string) => {
-    if (accordionKey) {
-      setOpenAccordions((prev) => ({ ...prev, [accordionKey]: true }));
-    }
-    const element = document.getElementById(sectionId);
-    if (element) {
-      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
   };
 
   // Subtotal calculations for HH, HB, MH, MB
@@ -364,7 +355,7 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
     subField: keyof DailyReportFormData[T],
     value: string
   ) => {
-    // 1. Boring -> Ringkasan Capaian: Total Progress Sipil terakumulasi otomatis dari rincian boring
+    // 1. Boring -> Ringkasan Pencapaian: Total Progress Sipil terakumulasi otomatis dari rincian boring
     if (section === 'boring') {
       const newBoring = {
         ...formData.boring,
@@ -387,7 +378,7 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
       return;
     }
 
-    // 2. Pulling -> Ringkasan Capaian: Total Progress Kabel terakumulasi otomatis dari rincian pulling kabel
+    // 2. Pulling -> Ringkasan Pencapaian: Total Progress Kabel terakumulasi otomatis dari rincian pulling kabel
     if (section === 'pulling') {
       const newPulling = {
         ...formData.pulling,
@@ -415,7 +406,7 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
       return;
     }
 
-    // 3. Instalasi HH -> Ringkasan Capaian: Total HH terakumulasi otomatis dari rincian handhole
+    // 3. Instalasi HH -> Ringkasan Pencapaian: Total HH terakumulasi otomatis dari rincian handhole
     if (section === 'instalasiHH') {
       const newHH = {
         ...formData.instalasiHH,
@@ -436,7 +427,7 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
       return;
     }
 
-    // 4. Instalasi HB -> Ringkasan Capaian: Total HB terakumulasi otomatis dari rincian handbox
+    // 4. Instalasi HB -> Ringkasan Pencapaian: Total HB terakumulasi otomatis dari rincian handbox
     if (section === 'instalasiHB') {
       const newHB = {
         ...formData.instalasiHB,
@@ -457,7 +448,7 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
       return;
     }
 
-    // 5. Instalasi MH -> Ringkasan Capaian: Total MH terakumulasi otomatis dari rincian manhole
+    // 5. Instalasi MH -> Ringkasan Pencapaian: Total MH terakumulasi otomatis dari rincian manhole
     if (section === 'instalasiMH') {
       const newMH = {
         ...formData.instalasiMH,
@@ -507,7 +498,7 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
     const isHariKeSynced = dateDiffInfo ? formData.dayNumber === dateDiffInfo.days.toString() : false;
 
     return (
-      <div className="bg-[#091224] border border-emerald-500/30 rounded-2xl p-4 sm:p-5 mb-5 shadow-xl shadow-emerald-950/20 space-y-4">
+      <div id="section-identitas-project" className="bg-[#091224] border border-emerald-500/30 rounded-2xl p-4 sm:p-5 mb-5 shadow-xl shadow-emerald-950/20 space-y-4 scroll-mt-24 transition-all">
         <div className="flex items-center justify-between pb-3 border-b border-slate-800">
           <div className="flex items-center gap-2">
             <Building2 className="w-4 h-4 text-emerald-400" />
@@ -849,7 +840,7 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
   // 1. Informasi Titik & Pelaksanaan Pengamanan (Khusus Kategori Pengamanan)
   const renderInformasiPengamanan = () => {
     return (
-      <div className="bg-[#091224] border border-amber-500/30 rounded-2xl p-4 sm:p-5 mb-5 shadow-xl shadow-amber-950/20 space-y-4">
+      <div id="section-informasi-pengamanan" className="bg-[#091224] border border-amber-500/30 rounded-2xl p-4 sm:p-5 mb-5 shadow-xl shadow-amber-950/20 space-y-4 scroll-mt-24 transition-all">
         <div className="flex items-center justify-between pb-3 border-b border-slate-800">
           <div className="flex items-center gap-2">
             <Shield className="w-4 h-4 text-amber-400" />
@@ -1138,30 +1129,11 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
       {/* ========================================================================= */}
       <div 
         id="section-kategori-project" 
-        className="bg-[#091224] border border-cyan-500/30 rounded-2xl p-4 sm:p-5 mb-5 shadow-xl shadow-cyan-950/20 scroll-mt-24 transition-all space-y-4"
+        className="bg-[#091224] border border-cyan-500/30 rounded-2xl p-4 sm:p-5 mb-5 shadow-xl shadow-cyan-950/20 space-y-4"
       >
-        {/* Pilihan Kategori Project: Relokasi Goverment atau Pengamanan */}
-        <div className="bg-[#050b14]/90 p-3 sm:p-3.5 rounded-xl border border-cyan-500/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-inner">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-cyan-950/80 border border-cyan-500/40 flex items-center justify-center shrink-0">
-              <Layers className="w-4 h-4 text-cyan-400" />
-            </div>
-            <div>
-              <div className="flex items-center gap-1.5">
-                <span className="text-xs font-mono-cyber text-slate-100 font-bold uppercase tracking-wider">
-                  Kategori Project <span className="text-amber-400">*</span>
-                </span>
-                <span className="text-[10px] font-mono-cyber px-1.5 py-0.2 rounded bg-cyan-950 border border-cyan-500/40 text-cyan-300">
-                  {formData.projectCategory || 'Relokasi Government'}
-                </span>
-              </div>
-              <p className="text-[11px] text-slate-400 font-mono-cyber mt-0.5">
-                Pilih opsi klasifikasi project: Relokasi Goverment atau Pengamanan
-              </p>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-2 w-full sm:w-auto shrink-0">
+        {/* Sub-Menu Kategori Input */}
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-800 pb-5">
+          <div className="flex flex-wrap gap-3">
             <button
               type="button"
               onClick={() => {
@@ -1170,16 +1142,14 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
                   projectCategory: 'Relokasi Government',
                 });
               }}
-              className={`inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl border text-xs font-mono-cyber font-bold transition-all cursor-pointer ${
+              className={`px-5 py-2.5 rounded-full text-sm font-medium transition-all duration-300 flex items-center gap-2 cursor-pointer ${
                 formData.projectCategory === 'Relokasi Government' || !formData.projectCategory
-                  ? 'bg-emerald-950 border-emerald-400 text-emerald-300 shadow-md shadow-emerald-500/20 ring-1 ring-emerald-400/60'
-                  : 'bg-[#091224] border-slate-700 text-slate-400 hover:text-white hover:border-slate-600'
+                  ? 'bg-teal-500 text-gray-950 font-bold shadow-[0_0_15px_rgba(20,184,166,0.4)]'
+                  : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
               }`}
             >
-              <Building className="w-4 h-4 text-emerald-400 shrink-0" />
-              <span>Relokasi Goverment</span>
+              <span>🔵</span> Relokasi Government
             </button>
-
             <button
               type="button"
               onClick={() => {
@@ -1195,21 +1165,53 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
                   ...(formData.projectName?.trim().toLowerCase() === 'pengamanan' ? { projectName: '' } : {}),
                 });
               }}
-              className={`inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl border text-xs font-mono-cyber font-bold transition-all cursor-pointer ${
+              className={`px-5 py-2.5 rounded-full text-sm font-medium transition-all duration-300 flex items-center gap-2 cursor-pointer ${
                 formData.projectCategory === 'Pengamanan'
-                  ? 'bg-amber-950 border-amber-400 text-amber-300 shadow-md shadow-amber-500/20 ring-1 ring-amber-400/60'
-                  : 'bg-[#091224] border-slate-700 text-slate-400 hover:text-white hover:border-slate-600'
+                  ? 'bg-blue-600 text-white font-bold shadow-[0_0_15px_rgba(37,99,235,0.4)]'
+                  : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
               }`}
             >
-              <Shield className="w-4 h-4 text-amber-400 shrink-0" />
-              <span>Pengamanan</span>
+              <span>🛡️</span> Pengamanan
             </button>
+          </div>
+
+          <div className="flex items-center gap-2 text-xs font-mono-cyber">
+            <span className="text-slate-400">Kategori Aktif:</span>
+            <span className={`px-2 py-0.5 rounded font-bold border ${
+              formData.projectCategory === 'Pengamanan'
+                ? 'bg-blue-950/90 text-blue-300 border-blue-500/40'
+                : 'bg-teal-950/90 text-teal-300 border-teal-500/40'
+            }`}>
+              {formData.projectCategory === 'Pengamanan' ? '🛡️ Pengamanan' : '🔵 Relokasi Government'}
+            </span>
           </div>
         </div>
 
+        {/* Header Deskripsi Kategori */}
+        {formData.projectCategory !== 'Pengamanan' ? (
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 pt-1">
+            <h3 className="text-base sm:text-lg font-semibold text-teal-400 flex items-center gap-2 font-cyber">
+              <span>🔵</span> Form Relokasi Government
+            </h3>
+            <p className="text-[11px] text-slate-400 font-mono-cyber">
+              Memuat seksi: Identitas Project, Ringkasan Capaian, Rincian Progres Sipil & Kabel, Remarks, dan Isu Lapangan
+            </p>
+          </div>
+        ) : (
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 pt-1">
+            <h3 className="text-base sm:text-lg font-semibold text-blue-400 flex items-center gap-2 font-cyber">
+              <span>🛡️</span> Form Pengamanan
+            </h3>
+            <p className="text-[11px] text-slate-400 font-mono-cyber">
+              Memuat seksi: Informasi Titik, Opsi Jenis Pengamanan, Checklist Kalkulasi Item, dan Kendala
+            </p>
+          </div>
+        )}
+      </div>
+
         {/* Panel Opsi Jenis Pengamanan & Informasi Pengamanan (Muncul saat Kategori = Pengamanan) */}
         {formData.projectCategory === 'Pengamanan' && (
-          <div className="space-y-4">
+          <div className="space-y-4 animate-smooth-in">
             {/* Informasi Titik & Pelaksanaan Pengamanan */}
             {renderInformasiPengamanan()}
 
@@ -1385,29 +1387,28 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
           </div>
         </div>
       )}
-    </div>
 
       {/* ========================================================================= */}
       {/* SEKSI KHUSUS RELOKASI GOVERMENT: IDENTITAS PROJECT, JADWAL & PROGRES */}
-      {/* (Dihapus/Disembunyikan pada Kategori Project Pengamanan) */}
+      {/* (Tampil ketika Kategori Project Relokasi Goverment) */}
       {/* ========================================================================= */}
       {formData.projectCategory !== 'Pengamanan' && (
         <>
           {/* ========================================================================= */}
-          {/* 1. IDENTITAS PROJECT & JADWAL PELAKSANAAN (DALAM RELOKASI GOVERMENT) */}
+          {/* 1. IDENTITAS PROJECT & JADWAL PELAKSANAAN */}
           {/* ========================================================================= */}
           {renderIdentitasProject()}
 
           {/* ========================================================================= */}
-          {/* 2. RINGKASAN CAPAIAN HARIAN (KEY TOTALS) */}
+          {/* 2. RINGKASAN PENCAPAIAN HARIAN (KEY TOTALS) */}
           {/* ========================================================================= */}
-          <div id="section-key-totals" className="bg-[#091224] border border-cyan-500/30 rounded-2xl p-4 sm:p-5 mb-5 shadow-xl shadow-cyan-950/20 scroll-mt-24 transition-all space-y-4">
+          <div className="bg-[#091224] border border-cyan-500/30 rounded-2xl p-4 sm:p-5 mb-5 shadow-xl shadow-cyan-950/20 space-y-4">
         <div className="pt-1">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2.5">
             <div>
               <span className="text-xs font-cyber uppercase tracking-wider text-slate-200 font-semibold flex items-center gap-1.5">
                 <Layers className="w-3.5 h-3.5 text-cyan-400" />
-                <span>Ringkasan Capaian Harian (Key Totals)</span>
+                <span>Ringkasan Pencapaian Harian (Key Totals)</span>
               </span>
               <p className="text-[10px] font-mono-cyber text-emerald-400/90 mt-0.5">
                 ⚡ Otomatis bertambah sesuai jumlah data yang diinput pada Rincian Progres Harian Lapangan
@@ -2610,8 +2611,8 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
           </div>
         </AccordionSection>
       </div>
-    </>
-  )}
+        </>
+      )}
 
       {/* ========================================================================= */}
       {/* REMARKS (CATATAN KHUSUS LAPANGAN) */}

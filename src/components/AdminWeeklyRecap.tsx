@@ -324,10 +324,75 @@ export const AdminWeeklyRecap: React.FC<AdminWeeklyRecapProps> = ({
     }));
   };
 
+  // Scoped recap data for the selected area filter (or all)
+  const scopedRecapData = useMemo(() => {
+    if (selectedAreaFilter === 'All') return recapData;
+
+    const targetArea = recapData.areas.find(
+      (a) => a.areaName.toLowerCase() === selectedAreaFilter.toLowerCase()
+    );
+
+    const areaReports = targetArea ? targetArea.totalReports : 0;
+    const areaWaspangs = targetArea ? targetArea.waspangs.length : 0;
+    const areaSipil = targetArea ? targetArea.totalSipil : 0;
+    const areaKabel = targetArea ? targetArea.totalKabel : 0;
+    const areaKendala = targetArea ? targetArea.totalKendala : 0;
+
+    const relokasiArea = recapData.relokasi?.areas.find(
+      (a) => a.areaName.toLowerCase() === selectedAreaFilter.toLowerCase()
+    );
+    const pengamananArea = recapData.pengamanan?.areas.find(
+      (a) => a.areaName.toLowerCase() === selectedAreaFilter.toLowerCase()
+    );
+
+    const areaKendalaList = (recapData.allKendalaList || []).filter(
+      (k) => k.area.toLowerCase() === selectedAreaFilter.toLowerCase()
+    );
+
+    return {
+      ...recapData,
+      areas: targetArea ? [targetArea] : [],
+      grandTotal: {
+        totalReports: areaReports,
+        activeWaspangs: areaWaspangs,
+        totalSipil: Math.round(areaSipil * 10) / 10,
+        totalKabel: Math.round(areaKabel * 10) / 10,
+        totalKendala: areaKendala,
+      },
+      relokasi: relokasiArea
+        ? {
+            category: 'relokasi' as const,
+            totalReports: relokasiArea.totalReports,
+            activeWaspangs: relokasiArea.waspangs.length,
+            totalSipil: relokasiArea.totalSipil,
+            totalKabel: relokasiArea.totalKabel,
+            totalKendala: relokasiArea.totalKendala,
+            areas: [relokasiArea],
+          }
+        : undefined,
+      pengamanan: pengamananArea
+        ? {
+            category: 'pengamanan' as const,
+            totalReports: pengamananArea.totalReports,
+            activeWaspangs: pengamananArea.waspangs.length,
+            totalSipil: pengamananArea.totalSipil,
+            totalKabel: pengamananArea.totalKabel,
+            totalKendala: pengamananArea.totalKendala,
+            areas: [pengamananArea],
+          }
+        : undefined,
+      allKendalaList: areaKendalaList,
+    };
+  }, [recapData, selectedAreaFilter]);
+
+  // Pre-calculated WhatsApp formatted text
+  const currentWhatsAppText = useMemo(() => {
+    return generateWeeklyAdminWhatsAppText(recapData, selectedAreaFilter);
+  }, [recapData, selectedAreaFilter]);
+
   // Handle Copy WhatsApp text
   const handleCopyWAText = () => {
-    const text = generateWeeklyAdminWhatsAppText(recapData);
-    navigator.clipboard.writeText(text).then(() => {
+    navigator.clipboard.writeText(currentWhatsAppText).then(() => {
       setCopiedWA(true);
       setTimeout(() => setCopiedWA(false), 2500);
     });
@@ -335,7 +400,7 @@ export const AdminWeeklyRecap: React.FC<AdminWeeklyRecapProps> = ({
 
   // Handle Share to WhatsApp
   const handleShareWA = () => {
-    shareWeeklyRecapToWhatsApp(recapData, targetPhoneWA);
+    shareWeeklyRecapToWhatsApp(recapData, targetPhoneWA, selectedAreaFilter);
   };
 
   return (
@@ -358,7 +423,7 @@ export const AdminWeeklyRecap: React.FC<AdminWeeklyRecapProps> = ({
               Admin Dashboard: Rekap Mingguan
             </h2>
             <p className="text-xs text-slate-300 mt-1 max-w-xl leading-relaxed">
-              Monitoring capaian kinerja lapangan per <span className="text-cyan-300 font-semibold">Area</span> &amp; per <span className="text-cyan-300 font-semibold">Waspang</span>, keaktifan lapor harian, progres sipil, kabel, serta rekapitulasi kendala lapangan.
+              Monitoring pencapaian kinerja lapangan per <span className="text-cyan-300 font-semibold">Area</span> &amp; per <span className="text-cyan-300 font-semibold">Waspang</span>, keaktifan lapor harian, progres sipil, kabel, serta rekapitulasi kendala lapangan.
             </p>
           </div>
 
@@ -540,139 +605,156 @@ export const AdminWeeklyRecap: React.FC<AdminWeeklyRecapProps> = ({
       </div>
 
       {/* KPI Cards: Grand Totals for Selected Period (Interactive: Klik untuk rincian) */}
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5 sm:gap-3">
-        {/* Total Laporan */}
-        <div 
-          onClick={() => setActiveKpiModal('reports')}
-          className="bg-[#091224] border border-cyan-500/30 hover:border-cyan-400 rounded-2xl p-3 sm:p-3.5 shadow-lg shadow-cyan-950/15 flex flex-col justify-between relative overflow-hidden group transition-all cursor-pointer hover:scale-[1.02] active:scale-[0.99]"
-          title="Klik untuk melihat seluruh daftar laporan terperinci"
-        >
-          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-cyan-500 to-teal-400" />
-          <div className="flex items-center justify-between text-slate-400 mb-1">
-            <span className="text-[10px] sm:text-xs font-mono-cyber uppercase font-bold tracking-wider group-hover:text-cyan-300 transition-colors">Total Laporan</span>
-            <div className="w-6 h-6 rounded-lg bg-cyan-950/80 border border-cyan-500/30 flex items-center justify-center group-hover:bg-cyan-900 transition-colors">
-              <FileText className="w-3.5 h-3.5 text-cyan-400" />
-            </div>
-          </div>
-          <div className="text-xl sm:text-2xl font-bold font-mono-cyber text-white my-0.5 group-hover:text-cyan-200 transition-colors">
-            {recapData.grandTotal.totalReports}
-          </div>
-          <div className="flex items-center justify-between text-[10px] font-mono-cyber text-cyan-400/80 pt-0.5">
-            <span className="flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-cyan-400" />
-              <span>{periodLabel}</span>
+      <div className="space-y-2">
+        <div className="flex items-center justify-between px-1">
+          <div className="flex items-center gap-2">
+            <span className={`w-2 h-2 rounded-full ${selectedAreaFilter !== 'All' ? 'bg-cyan-400 animate-pulse' : 'bg-slate-400'}`} />
+            <span className="text-xs font-mono-cyber text-slate-300 font-semibold">
+              Ringkasan Kinerja: {selectedAreaFilter === 'All' ? 'Semua Wilayah (Grand Total)' : `Khusus ${selectedAreaFilter}`}
             </span>
-            <span className="text-cyan-300 font-bold group-hover:underline">💡 Rincian ↗</span>
           </div>
+          {selectedAreaFilter !== 'All' && (
+            <span className="text-[11px] font-mono-cyber text-cyan-400 bg-cyan-950/80 border border-cyan-500/40 px-2 py-0.5 rounded-md">
+              Filter aktif: {selectedAreaFilter}
+            </span>
+          )}
         </div>
 
-        {/* Waspang Aktif */}
-        <div 
-          onClick={() => setActiveKpiModal('waspangs')}
-          className="bg-[#091224] border border-blue-500/30 hover:border-blue-400 rounded-2xl p-3 sm:p-3.5 shadow-lg shadow-blue-950/15 flex flex-col justify-between relative overflow-hidden group transition-all cursor-pointer hover:scale-[1.02] active:scale-[0.99]"
-          title="Klik untuk melihat performa & keaktifan personil waspang"
-        >
-          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 to-indigo-400" />
-          <div className="flex items-center justify-between text-slate-400 mb-1">
-            <span className="text-[10px] sm:text-xs font-mono-cyber uppercase font-bold tracking-wider group-hover:text-blue-300 transition-colors">Waspang Aktif</span>
-            <div className="w-6 h-6 rounded-lg bg-blue-950/80 border border-blue-500/30 flex items-center justify-center group-hover:bg-blue-900 transition-colors">
-              <User className="w-3.5 h-3.5 text-blue-400" />
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5 sm:gap-3">
+          {/* Total Laporan */}
+          <div 
+            onClick={() => setActiveKpiModal('reports')}
+            className="bg-[#091224] border border-cyan-500/30 hover:border-cyan-400 rounded-2xl p-3 sm:p-3.5 shadow-lg shadow-cyan-950/15 flex flex-col justify-between relative overflow-hidden group transition-all cursor-pointer hover:scale-[1.02] active:scale-[0.99]"
+            title="Klik untuk melihat seluruh daftar laporan terperinci"
+          >
+            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-cyan-500 to-teal-400" />
+            <div className="flex items-center justify-between text-slate-400 mb-1">
+              <span className="text-[10px] sm:text-xs font-mono-cyber uppercase font-bold tracking-wider group-hover:text-cyan-300 transition-colors">Total Laporan</span>
+              <div className="w-6 h-6 rounded-lg bg-cyan-950/80 border border-cyan-500/30 flex items-center justify-center group-hover:bg-cyan-900 transition-colors">
+                <FileText className="w-3.5 h-3.5 text-cyan-400" />
+              </div>
+            </div>
+            <div className="text-xl sm:text-2xl font-bold font-mono-cyber text-white my-0.5 group-hover:text-cyan-200 transition-colors">
+              {scopedRecapData.grandTotal.totalReports}
+            </div>
+            <div className="flex items-center justify-between text-[10px] font-mono-cyber text-cyan-400/80 pt-0.5">
+              <span className="flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-cyan-400" />
+                <span>{selectedAreaFilter !== 'All' ? selectedAreaFilter : periodLabel}</span>
+              </span>
+              <span className="text-cyan-300 font-bold group-hover:underline">💡 Rincian ↗</span>
             </div>
           </div>
-          <div className="text-xl sm:text-2xl font-bold font-mono-cyber text-blue-300 my-0.5 group-hover:text-blue-200 transition-colors">
-            {recapData.grandTotal.activeWaspangs}
-          </div>
-          <div className="flex items-center justify-between text-[10px] font-mono-cyber text-blue-400/80 pt-0.5">
-            <span className="flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-blue-400" />
-              <span>Personil Lapangan</span>
-            </span>
-            <span className="text-blue-300 font-bold group-hover:underline">💡 Rincian ↗</span>
-          </div>
-        </div>
 
-        {/* Total Progres Sipil */}
-        <div 
-          onClick={() => setActiveKpiModal('sipil')}
-          className="bg-[#091224] border border-emerald-500/30 hover:border-emerald-400 rounded-2xl p-3 sm:p-3.5 shadow-lg shadow-emerald-950/15 flex flex-col justify-between relative overflow-hidden group transition-all cursor-pointer hover:scale-[1.02] active:scale-[0.99]"
-          title="Klik untuk melihat rincian progres sipil (Boring, Galian, HDPE)"
-        >
-          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 to-teal-400" />
-          <div className="flex items-center justify-between text-slate-400 mb-1">
-            <span className="text-[10px] sm:text-xs font-mono-cyber uppercase font-bold tracking-wider group-hover:text-emerald-300 transition-colors">Progres Sipil</span>
-            <div className="w-6 h-6 rounded-lg bg-emerald-950/80 border border-emerald-500/30 flex items-center justify-center group-hover:bg-emerald-900 transition-colors">
-              <Layers className="w-3.5 h-3.5 text-emerald-400" />
+          {/* Waspang Aktif */}
+          <div 
+            onClick={() => setActiveKpiModal('waspangs')}
+            className="bg-[#091224] border border-blue-500/30 hover:border-blue-400 rounded-2xl p-3 sm:p-3.5 shadow-lg shadow-blue-950/15 flex flex-col justify-between relative overflow-hidden group transition-all cursor-pointer hover:scale-[1.02] active:scale-[0.99]"
+            title="Klik untuk melihat performa & keaktifan personil waspang"
+          >
+            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 to-indigo-400" />
+            <div className="flex items-center justify-between text-slate-400 mb-1">
+              <span className="text-[10px] sm:text-xs font-mono-cyber uppercase font-bold tracking-wider group-hover:text-blue-300 transition-colors">Waspang Aktif</span>
+              <div className="w-6 h-6 rounded-lg bg-blue-950/80 border border-blue-500/30 flex items-center justify-center group-hover:bg-blue-900 transition-colors">
+                <User className="w-3.5 h-3.5 text-blue-400" />
+              </div>
+            </div>
+            <div className="text-xl sm:text-2xl font-bold font-mono-cyber text-blue-300 my-0.5 group-hover:text-blue-200 transition-colors">
+              {scopedRecapData.grandTotal.activeWaspangs}
+            </div>
+            <div className="flex items-center justify-between text-[10px] font-mono-cyber text-blue-400/80 pt-0.5">
+              <span className="flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-blue-400" />
+                <span>Personil {selectedAreaFilter !== 'All' ? selectedAreaFilter : 'Lapangan'}</span>
+              </span>
+              <span className="text-blue-300 font-bold group-hover:underline">💡 Rincian ↗</span>
             </div>
           </div>
-          <div className="text-xl sm:text-2xl font-bold font-mono-cyber text-emerald-300 my-0.5 group-hover:text-emerald-200 transition-colors">
-            {recapData.grandTotal.totalSipil.toLocaleString('id-ID')}
-            <span className="text-xs font-normal text-emerald-400 ml-1">m</span>
-          </div>
-          <div className="flex items-center justify-between text-[10px] font-mono-cyber text-emerald-400/80 pt-0.5">
-            <span className="flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-              <span>Boring &amp; Akses</span>
-            </span>
-            <span className="text-emerald-300 font-bold group-hover:underline">💡 Rincian ↗</span>
-          </div>
-        </div>
 
-        {/* Total Progres Kabel */}
-        <div 
-          onClick={() => setActiveKpiModal('kabel')}
-          className="bg-[#091224] border border-amber-500/30 hover:border-amber-400 rounded-2xl p-3 sm:p-3.5 shadow-lg shadow-amber-950/15 flex flex-col justify-between relative overflow-hidden group transition-all cursor-pointer hover:scale-[1.02] active:scale-[0.99]"
-          title="Klik untuk melihat rincian progres penarikan kabel (FO & Coax)"
-        >
-          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-amber-500 to-yellow-400" />
-          <div className="flex items-center justify-between text-slate-400 mb-1">
-            <span className="text-[10px] sm:text-xs font-mono-cyber uppercase font-bold tracking-wider group-hover:text-amber-300 transition-colors">Progres Kabel</span>
-            <div className="w-6 h-6 rounded-lg bg-amber-950/80 border border-amber-500/30 flex items-center justify-center group-hover:bg-amber-900 transition-colors">
-              <Cable className="w-3.5 h-3.5 text-amber-400" />
+          {/* Total Progres Sipil */}
+          <div 
+            onClick={() => setActiveKpiModal('sipil')}
+            className="bg-[#091224] border border-emerald-500/30 hover:border-emerald-400 rounded-2xl p-3 sm:p-3.5 shadow-lg shadow-emerald-950/15 flex flex-col justify-between relative overflow-hidden group transition-all cursor-pointer hover:scale-[1.02] active:scale-[0.99]"
+            title="Klik untuk melihat rincian progres sipil (Boring, Galian, HDPE)"
+          >
+            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 to-teal-400" />
+            <div className="flex items-center justify-between text-slate-400 mb-1">
+              <span className="text-[10px] sm:text-xs font-mono-cyber uppercase font-bold tracking-wider group-hover:text-emerald-300 transition-colors">Progres Sipil</span>
+              <div className="w-6 h-6 rounded-lg bg-emerald-950/80 border border-emerald-500/30 flex items-center justify-center group-hover:bg-emerald-900 transition-colors">
+                <Layers className="w-3.5 h-3.5 text-emerald-400" />
+              </div>
+            </div>
+            <div className="text-xl sm:text-2xl font-bold font-mono-cyber text-emerald-300 my-0.5 group-hover:text-emerald-200 transition-colors">
+              {scopedRecapData.grandTotal.totalSipil.toLocaleString('id-ID')}
+              <span className="text-xs font-normal text-emerald-400 ml-1">m</span>
+            </div>
+            <div className="flex items-center justify-between text-[10px] font-mono-cyber text-emerald-400/80 pt-0.5">
+              <span className="flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                <span>Boring &amp; Akses</span>
+              </span>
+              <span className="text-emerald-300 font-bold group-hover:underline">💡 Rincian ↗</span>
             </div>
           </div>
-          <div className="text-xl sm:text-2xl font-bold font-mono-cyber text-amber-300 my-0.5 group-hover:text-amber-200 transition-colors">
-            {recapData.grandTotal.totalKabel.toLocaleString('id-ID')}
-            <span className="text-xs font-normal text-amber-400 ml-1">m</span>
-          </div>
-          <div className="flex items-center justify-between text-[10px] font-mono-cyber text-amber-400/80 pt-0.5">
-            <span className="flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
-              <span>FO &amp; Coaxial</span>
-            </span>
-            <span className="text-amber-300 font-bold group-hover:underline">💡 Rincian ↗</span>
-          </div>
-        </div>
 
-        {/* Total Kendala Lapangan */}
-        <div 
-          onClick={() => setActiveKpiModal('kendala')}
-          className="col-span-2 sm:col-span-1 bg-[#091224] border border-rose-500/30 hover:border-rose-400 rounded-2xl p-3 sm:p-3.5 shadow-lg shadow-rose-950/15 flex flex-col justify-between relative overflow-hidden group transition-all cursor-pointer hover:scale-[1.02] active:scale-[0.99]"
-          title="Klik untuk melihat seluruh kendala & isu lapangan terintegrasi"
-        >
-          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-rose-500 to-red-400" />
-          <div className="flex items-center justify-between text-slate-400 mb-1">
-            <span className="text-[10px] sm:text-xs font-mono-cyber uppercase font-bold tracking-wider group-hover:text-rose-300 transition-colors">Isu Lapangan</span>
-            <div className="w-6 h-6 rounded-lg bg-rose-950/80 border border-rose-500/30 flex items-center justify-center group-hover:bg-rose-900 transition-colors">
-              <AlertTriangle className="w-3.5 h-3.5 text-rose-400" />
+          {/* Total Progres Kabel */}
+          <div 
+            onClick={() => setActiveKpiModal('kabel')}
+            className="bg-[#091224] border border-amber-500/30 hover:border-amber-400 rounded-2xl p-3 sm:p-3.5 shadow-lg shadow-amber-950/15 flex flex-col justify-between relative overflow-hidden group transition-all cursor-pointer hover:scale-[1.02] active:scale-[0.99]"
+            title="Klik untuk melihat rincian progres penarikan kabel (FO & Coax)"
+          >
+            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-amber-500 to-yellow-400" />
+            <div className="flex items-center justify-between text-slate-400 mb-1">
+              <span className="text-[10px] sm:text-xs font-mono-cyber uppercase font-bold tracking-wider group-hover:text-amber-300 transition-colors">Progres Kabel</span>
+              <div className="w-6 h-6 rounded-lg bg-amber-950/80 border border-amber-500/30 flex items-center justify-center group-hover:bg-amber-900 transition-colors">
+                <Cable className="w-3.5 h-3.5 text-amber-400" />
+              </div>
+            </div>
+            <div className="text-xl sm:text-2xl font-bold font-mono-cyber text-amber-300 my-0.5 group-hover:text-amber-200 transition-colors">
+              {scopedRecapData.grandTotal.totalKabel.toLocaleString('id-ID')}
+              <span className="text-xs font-normal text-amber-400 ml-1">m</span>
+            </div>
+            <div className="flex items-center justify-between text-[10px] font-mono-cyber text-amber-400/80 pt-0.5">
+              <span className="flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+                <span>FO &amp; Coaxial</span>
+              </span>
+              <span className="text-amber-300 font-bold group-hover:underline">💡 Rincian ↗</span>
             </div>
           </div>
-          <div className="text-xl sm:text-2xl font-bold font-mono-cyber text-rose-300 my-0.5 group-hover:text-rose-200 transition-colors">
-            {recapData.grandTotal.totalKendala}
-          </div>
-          <div className="flex items-center justify-between text-[10px] font-mono-cyber text-rose-400/80 pt-0.5">
-            <span className="flex items-center gap-1">
-              <span className={`w-1.5 h-1.5 rounded-full ${recapData.grandTotal.totalKendala > 0 ? 'bg-rose-400' : 'bg-emerald-400'}`} />
-              <span>{recapData.grandTotal.totalKendala > 0 ? 'Perlu Perhatian' : 'Kondisi Aman'}</span>
-            </span>
-            <span className="text-rose-300 font-bold group-hover:underline">💡 Rincian ↗</span>
+
+          {/* Total Kendala Lapangan */}
+          <div 
+            onClick={() => setActiveKpiModal('kendala')}
+            className="col-span-2 sm:col-span-1 bg-[#091224] border border-rose-500/30 hover:border-rose-400 rounded-2xl p-3 sm:p-3.5 shadow-lg shadow-rose-950/15 flex flex-col justify-between relative overflow-hidden group transition-all cursor-pointer hover:scale-[1.02] active:scale-[0.99]"
+            title="Klik untuk melihat seluruh kendala & isu lapangan terintegrasi"
+          >
+            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-rose-500 to-red-400" />
+            <div className="flex items-center justify-between text-slate-400 mb-1">
+              <span className="text-[10px] sm:text-xs font-mono-cyber uppercase font-bold tracking-wider group-hover:text-rose-300 transition-colors">Isu Lapangan</span>
+              <div className="w-6 h-6 rounded-lg bg-rose-950/80 border border-rose-500/30 flex items-center justify-center group-hover:bg-rose-900 transition-colors">
+                <AlertTriangle className="w-3.5 h-3.5 text-rose-400" />
+              </div>
+            </div>
+            <div className="text-xl sm:text-2xl font-bold font-mono-cyber text-rose-300 my-0.5 group-hover:text-rose-200 transition-colors">
+              {scopedRecapData.grandTotal.totalKendala}
+            </div>
+            <div className="flex items-center justify-between text-[10px] font-mono-cyber text-rose-400/80 pt-0.5">
+              <span className="flex items-center gap-1">
+                <span className={`w-1.5 h-1.5 rounded-full ${scopedRecapData.grandTotal.totalKendala > 0 ? 'bg-rose-400' : 'bg-emerald-400'}`} />
+                <span>{scopedRecapData.grandTotal.totalKendala > 0 ? 'Perlu Perhatian' : 'Kondisi Aman'}</span>
+              </span>
+              <span className="text-rose-300 font-bold group-hover:underline">💡 Rincian ↗</span>
+            </div>
           </div>
         </div>
       </div>
 
       {/* VISUALISASI GRAFIK PERFORMA WASPANG (PIE & DONUT CHART) */}
       <WaspangPerformanceChart
-        recapData={recapData}
+        recapData={scopedRecapData}
         periodLabel={periodLabel}
+        selectedArea={selectedAreaFilter}
         onSelectWaspang={(wName, aName) => {
           setSelectedWaspangModal({ waspangName: wName, areaName: aName });
         }}
@@ -682,15 +764,22 @@ export const AdminWeeklyRecap: React.FC<AdminWeeklyRecapProps> = ({
       <div className="bg-gradient-to-r from-[#072418] via-[#0a3020] to-[#072418] border border-emerald-500/40 rounded-2xl p-4 sm:p-5 shadow-xl shadow-emerald-950/20 space-y-3">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-emerald-500/20">
           <div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
               <h3 className="text-sm sm:text-base font-cyber font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
                 <Share2 className="w-4 h-4 text-emerald-400" />
-                Ekspor WhatsApp Khusus Admin
+                Ekspor WhatsApp Khusus Admin {selectedAreaFilter !== 'All' ? `• Wilayah ${selectedAreaFilter}` : '• Semua Wilayah'}
               </h3>
+              {selectedAreaFilter !== 'All' && (
+                <span className="px-2 py-0.5 rounded-full bg-emerald-950 border border-emerald-400/50 text-[10px] text-emerald-300 font-mono-cyber">
+                  Mode Filter {selectedAreaFilter}
+                </span>
+              )}
             </div>
             <p className="text-xs text-emerald-200/80 mt-0.5">
-              Kirimkan ringkasan performa seluruh Waspang &amp; Area periode ini langsung ke grup WhatsApp manajemen atau stakeholder.
+              {selectedAreaFilter === 'All'
+                ? 'Kirimkan ringkasan performa seluruh Waspang & Area periode ini langsung ke grup WhatsApp manajemen atau stakeholder.'
+                : `Kirimkan laporan ringkasan khusus wilayah ${selectedAreaFilter} periode ini langsung ke grup WhatsApp manajemen atau stakeholder.`}
             </p>
           </div>
 
@@ -698,17 +787,17 @@ export const AdminWeeklyRecap: React.FC<AdminWeeklyRecapProps> = ({
             <button
               type="button"
               onClick={() => setShowPreviewModal(true)}
-              className="h-9 px-3 rounded-xl bg-emerald-950/90 hover:bg-emerald-900 border border-emerald-500/40 text-xs font-mono-cyber text-emerald-200 hover:text-white transition-all cursor-pointer flex items-center gap-1.5 shadow-sm"
+              className="h-9 px-3 rounded-xl bg-emerald-950/90 hover:bg-emerald-900 border border-emerald-500/40 text-xs font-mono-cyber text-emerald-200 hover:text-white transition-all cursor-pointer flex items-center gap-1.5 shadow-sm active:scale-95"
               title="Lihat format pesan WhatsApp yang akan dikirim"
             >
               <Eye className="w-3.5 h-3.5 text-emerald-300" />
-              <span>Preview Teks</span>
+              <span>Preview Teks {selectedAreaFilter !== 'All' ? `(${selectedAreaFilter})` : ''}</span>
             </button>
 
             <button
               type="button"
               onClick={handleCopyWAText}
-              className="h-9 px-3 rounded-xl bg-slate-900/90 hover:bg-slate-800 border border-slate-700 text-xs font-mono-cyber text-slate-200 hover:text-white transition-all cursor-pointer flex items-center gap-1.5 shadow-sm"
+              className="h-9 px-3 rounded-xl bg-slate-900/90 hover:bg-slate-800 border border-slate-700 text-xs font-mono-cyber text-slate-200 hover:text-white transition-all cursor-pointer flex items-center gap-1.5 shadow-sm active:scale-95"
               title="Salin teks ke clipboard"
             >
               {copiedWA ? (
@@ -719,7 +808,7 @@ export const AdminWeeklyRecap: React.FC<AdminWeeklyRecapProps> = ({
               ) : (
                 <>
                   <Copy className="w-3.5 h-3.5 text-slate-300" />
-                  <span>Salin Teks</span>
+                  <span>Salin Teks {selectedAreaFilter !== 'All' ? `(${selectedAreaFilter})` : ''}</span>
                 </>
               )}
             </button>
@@ -731,7 +820,7 @@ export const AdminWeeklyRecap: React.FC<AdminWeeklyRecapProps> = ({
               title="Buka WhatsApp dengan format rekap mingguan"
             >
               <Send className="w-3.5 h-3.5" />
-              <span>Share via WhatsApp</span>
+              <span>Share via WhatsApp {selectedAreaFilter !== 'All' ? `(${selectedAreaFilter})` : ''}</span>
             </button>
           </div>
         </div>
@@ -762,19 +851,21 @@ export const AdminWeeklyRecap: React.FC<AdminWeeklyRecapProps> = ({
 
         {/* Category Breakdown Badges */}
         <div className="pt-2 border-t border-emerald-500/20 flex items-center gap-2 flex-wrap text-[11px] font-mono-cyber">
-          <span className="text-emerald-300/70">Format Pesan WhatsApp (Otomatis Dikelompokkan):</span>
+          <span className="text-emerald-300/70">
+            Format Pesan WhatsApp ({selectedAreaFilter === 'All' ? 'Semua Wilayah' : selectedAreaFilter}):
+          </span>
           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-950/80 border border-blue-500/30 text-blue-200">
             <span>🔵</span>
-            <span>Relokasi Gov: <strong>{recapData.relokasi?.totalReports || 0} Lap</strong> ({recapData.relokasi?.totalSipil.toLocaleString('id-ID')}m sipil • {recapData.relokasi?.totalKabel.toLocaleString('id-ID')}m kabel)</span>
+            <span>Relokasi Gov: <strong>{scopedRecapData.relokasi?.totalReports || 0} Lap</strong> ({scopedRecapData.relokasi?.totalSipil.toLocaleString('id-ID')}m sipil • {scopedRecapData.relokasi?.totalKabel.toLocaleString('id-ID')}m kabel)</span>
           </span>
           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-950/80 border border-amber-500/30 text-amber-200">
             <span>🛡️</span>
-            <span>Pengamanan: <strong>{recapData.pengamanan?.totalReports || 0} Lap</strong> ({recapData.pengamanan?.activeWaspangs || 0} personil • {recapData.pengamanan?.totalKendala || 0} isu)</span>
+            <span>Pengamanan: <strong>{scopedRecapData.pengamanan?.totalReports || 0} Lap</strong> ({scopedRecapData.pengamanan?.activeWaspangs || 0} personil • {scopedRecapData.pengamanan?.totalKendala || 0} isu)</span>
           </span>
-          {recapData.allKendalaList && recapData.allKendalaList.length > 0 && (
+          {scopedRecapData.allKendalaList && scopedRecapData.allKendalaList.length > 0 && (
             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-rose-950/80 border border-rose-500/30 text-rose-200">
               <span>⚠️</span>
-              <span>{recapData.allKendalaList.length} Kendala Terintegrasi</span>
+              <span>{scopedRecapData.allKendalaList.length} Kendala {selectedAreaFilter !== 'All' ? selectedAreaFilter : 'Terintegrasi'}</span>
             </span>
           )}
         </div>
@@ -1049,11 +1140,13 @@ export const AdminWeeklyRecap: React.FC<AdminWeeklyRecapProps> = ({
                   <h3 className="text-sm font-cyber font-bold text-white tracking-wide flex items-center gap-2">
                     Pratinjau Pesan WhatsApp Admin
                     <span className="px-1.5 py-0.2 rounded bg-emerald-500/20 border border-emerald-400/40 text-[10px] text-emerald-300 font-mono-cyber">
-                      PMO Rekap
+                      {selectedAreaFilter !== 'All' ? `Wilayah ${selectedAreaFilter}` : 'Semua Wilayah'}
                     </span>
                   </h3>
                   <p className="text-[11px] text-emerald-200/70 font-mono-cyber">
-                    Format rapi, berstruktur pohon (tree-view), dan mudah dibaca penerima
+                    {selectedAreaFilter !== 'All'
+                      ? `Format laporan khusus wilayah ${selectedAreaFilter} berstruktur rapi`
+                      : 'Format laporan akumulasi seluruh wilayah berstruktur pohon (tree-view)'}
                   </p>
                 </div>
               </div>
@@ -1104,7 +1197,7 @@ export const AdminWeeklyRecap: React.FC<AdminWeeklyRecapProps> = ({
                 <div className="max-w-xl mx-auto space-y-2 py-2">
                   <div className="text-center my-1">
                     <span className="px-2.5 py-1 rounded-full bg-[#111e29] border border-slate-800 text-[10px] font-mono-cyber text-slate-400 shadow-inner">
-                      HARI INI • PESAN RESMI PMO
+                      HARI INI • PESAN RESMI PMO {selectedAreaFilter !== 'All' ? `(${selectedAreaFilter})` : ''}
                     </span>
                   </div>
 
@@ -1114,7 +1207,7 @@ export const AdminWeeklyRecap: React.FC<AdminWeeklyRecapProps> = ({
                     <div className="flex items-center justify-between pb-2 mb-2 border-b border-emerald-400/25">
                       <span className="text-emerald-300 font-bold font-cyber text-[11px] tracking-wide flex items-center gap-1.5">
                         <span className="w-2 h-2 rounded-full bg-emerald-300 animate-pulse" />
-                        PMO MS CKT • GovMonitor System
+                        PMO MS CKT • GovMonitor System {selectedAreaFilter !== 'All' ? `[${selectedAreaFilter}]` : ''}
                       </span>
                       <span className="text-[10px] text-emerald-200/80 font-mono-cyber">
                         Admin Export
@@ -1123,7 +1216,7 @@ export const AdminWeeklyRecap: React.FC<AdminWeeklyRecapProps> = ({
 
                     {/* Rendered Text with Highlighted Elements */}
                     <div className="whitespace-pre-wrap leading-relaxed text-slate-100 font-mono-cyber">
-                      {generateWeeklyAdminWhatsAppText(recapData)
+                      {currentWhatsAppText
                         .split('\n')
                         .map((line, idx) => {
                           if (!line.trim()) {
@@ -1212,7 +1305,7 @@ export const AdminWeeklyRecap: React.FC<AdminWeeklyRecapProps> = ({
               ) : (
                 /* Raw Monospace Code Box */
                 <div className="font-mono text-xs text-slate-200 whitespace-pre-wrap leading-relaxed bg-[#050b14] p-4 rounded-xl border border-slate-800">
-                  {generateWeeklyAdminWhatsAppText(recapData)}
+                  {currentWhatsAppText}
                 </div>
               )}
             </div>
@@ -1268,9 +1361,10 @@ export const AdminWeeklyRecap: React.FC<AdminWeeklyRecapProps> = ({
       {activeKpiModal && (
         <KpiDetailModal
           type={activeKpiModal}
-          recapData={recapData}
+          recapData={scopedRecapData}
           filteredReports={filteredReports}
           periodLabel={periodLabel}
+          defaultAreaFilter={selectedAreaFilter}
           onClose={() => setActiveKpiModal(null)}
           onSelectReport={(rep) => {
             setActiveKpiModal(null);

@@ -456,43 +456,84 @@ function formatDatesList(dates?: string[], latest?: string): string {
   return `*${dateItems.join(', ')}*${latestStr}`;
 }
 
-export function generateWeeklyAdminWhatsAppText(data: WeeklyRecapData): string {
+export function generateWeeklyAdminWhatsAppText(data: WeeklyRecapData, areaFilter?: string): string {
   const startFmt = formatIndonesianDate(data.startDate);
   const endFmt = formatIndonesianDate(data.endDate);
   const periodText = startFmt === endFmt ? startFmt : `${startFmt} s/d ${endFmt}`;
   const timestamp = formatGeneratedTimestamp();
 
+  const isSpecificArea = Boolean(areaFilter && areaFilter !== 'All');
+  const targetAreaName = areaFilter && areaFilter !== 'All' ? areaFilter : 'SEMUA AREA';
+
   const lines: string[] = [
     `*┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓*`,
-    `*📊 REKAP KINERJA & PROGRES WASPANG*`,
+    isSpecificArea 
+      ? `*📊 REKAP KINERJA - ${targetAreaName.toUpperCase()}*`
+      : `*📊 REKAP KINERJA & PROGRES WASPANG*`,
     `*🏢 LINKNET & PMO MS CKT*`,
     `*┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛*`,
     ``,
-    `📅 *Periode     :* ${periodText}`,
-    `🏷️ *Rentang     :* ${data.periodLabel}`,
-    `🕒 *Waktu       :* ${timestamp}`,
-    `👤 *Update from :* Admin Dashboard`,
-    `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`,
   ];
 
-  if (data.grandTotal.totalReports === 0) {
+  if (isSpecificArea) {
+    lines.push(`📍 *Wilayah     :* ${targetAreaName}`);
+  }
+  lines.push(`📅 *Periode     :* ${periodText}`);
+  lines.push(`🏷️ *Rentang     :* ${data.periodLabel}`);
+  lines.push(`🕒 *Waktu       :* ${timestamp}`);
+  lines.push(`👤 *Update from :* Admin Dashboard`);
+  lines.push(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+
+  // Target areas based on filter
+  const targetAreas = isSpecificArea
+    ? data.areas.filter((a) => a.areaName.toLowerCase() === targetAreaName.toLowerCase())
+    : data.areas;
+
+  const totalReports = isSpecificArea
+    ? targetAreas.reduce((acc, a) => acc + a.totalReports, 0)
+    : data.grandTotal.totalReports;
+  const activeWaspangs = isSpecificArea
+    ? targetAreas.reduce((acc, a) => acc + a.waspangs.length, 0)
+    : data.grandTotal.activeWaspangs;
+  const totalSipil = isSpecificArea
+    ? targetAreas.reduce((acc, a) => acc + a.totalSipil, 0)
+    : data.grandTotal.totalSipil;
+  const totalKabel = isSpecificArea
+    ? targetAreas.reduce((acc, a) => acc + a.totalKabel, 0)
+    : data.grandTotal.totalKabel;
+  const totalKendala = isSpecificArea
+    ? targetAreas.reduce((acc, a) => acc + a.totalKendala, 0)
+    : data.grandTotal.totalKendala;
+
+  if (totalReports === 0) {
     lines.push(``);
-    lines.push(`_Belum ada data laporan harian yang masuk pada periode ini._`);
+    lines.push(
+      isSpecificArea
+        ? `_Belum ada data laporan harian yang masuk untuk ${targetAreaName} pada periode ini._`
+        : `_Belum ada data laporan harian yang masuk pada periode ini._`
+    );
     lines.push(``);
     lines.push(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
     lines.push(`_GovMonitor Intelligence System • PMO MS CKT_`);
     return lines.join('\n');
   }
 
-  // 1. EXECUTIVE SUMMARY BLOCK (GRAND TOTAL)
+  // 1. EXECUTIVE SUMMARY BLOCK
   lines.push(``);
-  lines.push(`*📈 RINGKASAN EKSEKUTIF (GRAND TOTAL)*`);
-  lines.push(`• Total Laporan Masuk  : *${data.grandTotal.totalReports} Laporan*`);
-  lines.push(`• Waspang Bertugas     : *${data.grandTotal.activeWaspangs} Personil*`);
-  lines.push(`• Akumulasi Pek. Sipil : *${data.grandTotal.totalSipil.toLocaleString('id-ID')} Meter*`);
-  lines.push(`• Akumulasi Pek. Kabel : *${data.grandTotal.totalKabel.toLocaleString('id-ID')} Meter*`);
-  if (data.grandTotal.totalKendala > 0) {
-    lines.push(`• Isu Lapangan         : *⚠️ ${data.grandTotal.totalKendala} Kendala Perlu Atensi*`);
+  lines.push(
+    isSpecificArea
+      ? `*📈 RINGKASAN EKSEKUTIF (${targetAreaName.toUpperCase()})*`
+      : `*📈 RINGKASAN EKSEKUTIF (GRAND TOTAL)*`
+  );
+  if (isSpecificArea) {
+    lines.push(`• Wilayah Kerja        : *${targetAreaName}*`);
+  }
+  lines.push(`• Total Laporan Masuk  : *${totalReports} Laporan*`);
+  lines.push(`• Waspang Bertugas     : *${activeWaspangs} Personil*`);
+  lines.push(`• Akumulasi Pek. Sipil : *${totalSipil.toLocaleString('id-ID')} Meter*`);
+  lines.push(`• Akumulasi Pek. Kabel : *${totalKabel.toLocaleString('id-ID')} Meter*`);
+  if (totalKendala > 0) {
+    lines.push(`• Isu Lapangan         : *⚠️ ${totalKendala} Kendala Perlu Atensi*`);
   } else {
     lines.push(`• Isu Lapangan         : *✅ Kondisi Operasional Aman & Lancar*`);
   }
@@ -502,24 +543,41 @@ export function generateWeeklyAdminWhatsAppText(data: WeeklyRecapData): string {
   const relokasi = data.relokasi;
   lines.push(``);
   lines.push(`=================================`);
-  lines.push(`🔵 *KATEGORI A: RELOKASI GOV*`);
+  lines.push(
+    isSpecificArea
+      ? `🔵 *KATEGORI A: RELOKASI GOV (${targetAreaName.toUpperCase()})*`
+      : `🔵 *KATEGORI A: RELOKASI GOV*`
+  );
   lines.push(`=================================`);
   lines.push(`*Ringkasan Relokasi:*`);
   if (relokasi) {
-    lines.push(`- Total Laporan: *${relokasi.totalReports} Laporan* (${relokasi.activeWaspangs} Personil)`);
+    const activeRelokasiAreas = isSpecificArea
+      ? relokasi.areas.filter((a) => a.areaName.toLowerCase() === targetAreaName.toLowerCase() && a.waspangs.length > 0)
+      : relokasi.areas.filter((a) => a.waspangs.length > 0);
+
+    const relokasiReportsCount = activeRelokasiAreas.reduce((acc, a) => acc + a.totalReports, 0);
+    const relokasiSipil = activeRelokasiAreas.reduce((acc, a) => acc + a.totalSipil, 0);
+    const relokasiKabel = activeRelokasiAreas.reduce((acc, a) => acc + a.totalKabel, 0);
+    const relokasiKendala = activeRelokasiAreas.reduce((acc, a) => acc + a.totalKendala, 0);
+    const relokasiWaspangCount = activeRelokasiAreas.reduce((acc, a) => acc + a.waspangs.length, 0);
+
+    lines.push(`- Total Laporan: *${relokasiReportsCount} Laporan* (${relokasiWaspangCount} Personil)`);
     lines.push(
-      `- Total Sipil  : *${relokasi.totalSipil.toLocaleString('id-ID')} m* | Total Kabel: *${relokasi.totalKabel.toLocaleString('id-ID')} m*`
+      `- Total Sipil  : *${relokasiSipil.toLocaleString('id-ID')} m* | Total Kabel: *${relokasiKabel.toLocaleString('id-ID')} m*`
     );
     lines.push(
-      `- Status Isu   : *${relokasi.totalKendala > 0 ? `⚠️ ${relokasi.totalKendala} Kendala Terlaporkan` : `✅ Aman / Nihil Kendala`}*`
+      `- Status Isu   : *${relokasiKendala > 0 ? `⚠️ ${relokasiKendala} Kendala Terlaporkan` : `✅ Aman / Nihil Kendala`}*`
     );
     lines.push(`─────────────────────────────────`);
 
-    const activeAreas = relokasi.areas.filter((a) => a.waspangs.length > 0);
-    if (activeAreas.length === 0) {
-      lines.push(`_(Tidak ada laporan project Relokasi Government pada periode ini)_`);
+    if (activeRelokasiAreas.length === 0) {
+      lines.push(
+        isSpecificArea
+          ? `_(Tidak ada laporan project Relokasi Government di ${targetAreaName} pada periode ini)_`
+          : `_(Tidak ada laporan project Relokasi Government pada periode ini)_`
+      );
     } else {
-      activeAreas.forEach((area) => {
+      activeRelokasiAreas.forEach((area) => {
         lines.push(``);
         lines.push(`*🔹 [AREA ${area.areaName.toUpperCase()}]*`);
         lines.push(
@@ -553,21 +611,36 @@ export function generateWeeklyAdminWhatsAppText(data: WeeklyRecapData): string {
   const pengamanan = data.pengamanan;
   lines.push(``);
   lines.push(`=================================`);
-  lines.push(`🛡️ *KATEGORI B: PENGAMANAN*`);
+  lines.push(
+    isSpecificArea
+      ? `🛡️ *KATEGORI B: PENGAMANAN (${targetAreaName.toUpperCase()})*`
+      : `🛡️ *KATEGORI B: PENGAMANAN*`
+  );
   lines.push(`=================================`);
   lines.push(`*Ringkasan Pengamanan:*`);
   if (pengamanan) {
-    lines.push(`- Total Laporan: *${pengamanan.totalReports} Laporan* (${pengamanan.activeWaspangs} Personil)`);
+    const activePengamananAreas = isSpecificArea
+      ? pengamanan.areas.filter((a) => a.areaName.toLowerCase() === targetAreaName.toLowerCase() && a.waspangs.length > 0)
+      : pengamanan.areas.filter((a) => a.waspangs.length > 0);
+
+    const pengamananReportsCount = activePengamananAreas.reduce((acc, a) => acc + a.totalReports, 0);
+    const pengamananKendala = activePengamananAreas.reduce((acc, a) => acc + a.totalKendala, 0);
+    const pengamananWaspangCount = activePengamananAreas.reduce((acc, a) => acc + a.waspangs.length, 0);
+
+    lines.push(`- Total Laporan: *${pengamananReportsCount} Laporan* (${pengamananWaspangCount} Personil)`);
     lines.push(
-      `- Status Isu   : *${pengamanan.totalKendala > 0 ? `⚠️ ${pengamanan.totalKendala} Kendala Terlaporkan` : `✅ Aman / Nihil Kendala`}*`
+      `- Status Isu   : *${pengamananKendala > 0 ? `⚠️ ${pengamananKendala} Kendala Terlaporkan` : `✅ Aman / Nihil Kendala`}*`
     );
     lines.push(`─────────────────────────────────`);
 
-    const activeAreas = pengamanan.areas.filter((a) => a.waspangs.length > 0);
-    if (activeAreas.length === 0) {
-      lines.push(`_(Tidak ada laporan project Pengamanan pada periode ini)_`);
+    if (activePengamananAreas.length === 0) {
+      lines.push(
+        isSpecificArea
+          ? `_(Tidak ada laporan project Pengamanan di ${targetAreaName} pada periode ini)_`
+          : `_(Tidak ada laporan project Pengamanan pada periode ini)_`
+      );
     } else {
-      activeAreas.forEach((area) => {
+      activePengamananAreas.forEach((area) => {
         lines.push(``);
         lines.push(`*🔹 [AREA ${area.areaName.toUpperCase()}]*`);
         lines.push(
@@ -598,10 +671,18 @@ export function generateWeeklyAdminWhatsAppText(data: WeeklyRecapData): string {
   // 3. COMBINED KENDALA & ACTION ITEMS SECTION
   lines.push(``);
   lines.push(`=================================`);
-  lines.push(`⚠️ *REKAP KENDALA & ISU LAPANGAN*`);
+  lines.push(
+    isSpecificArea
+      ? `⚠️ *REKAP KENDALA LAPANGAN (${targetAreaName.toUpperCase()})*`
+      : `⚠️ *REKAP KENDALA & ISU LAPANGAN*`
+  );
   lines.push(`=================================`);
 
-  const kendalaList = data.allKendalaList || [];
+  const rawKendalaList = data.allKendalaList || [];
+  const kendalaList = isSpecificArea
+    ? rawKendalaList.filter((k) => k.area.toLowerCase() === targetAreaName.toLowerCase())
+    : rawKendalaList;
+
   if (kendalaList.length > 0) {
     lines.push(`Daftar kendala lapangan yang memerlukan koordinasi / tindak lanjut (${kendalaList.length} Isu):`);
     lines.push(``);
@@ -614,14 +695,22 @@ export function generateWeeklyAdminWhatsAppText(data: WeeklyRecapData): string {
     lines.push(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
   } else {
     lines.push(`*✅ EVALUASI KENDALA:*`);
-    lines.push(`Seluruh pekerjaan Relokasi Government & Pengamanan berjalan aman dan sesuai rencana (Nihil Kendala).`);
+    lines.push(
+      isSpecificArea
+        ? `Seluruh pekerjaan di ${targetAreaName} berjalan aman dan sesuai rencana (Nihil Kendala).`
+        : `Seluruh pekerjaan Relokasi Government & Pengamanan berjalan aman dan sesuai rencana (Nihil Kendala).`
+    );
     lines.push(``);
     lines.push(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
   }
 
   // 4. FOOTER & INSTRUCTIONS
   lines.push(`📌 *CATATAN PMO MS CKT:*`);
-  lines.push(`1. Data diatas dihimpun otomatis dari sistem pelaporan harian resmi.`);
+  lines.push(
+    isSpecificArea
+      ? `1. Data dihimpun otomatis dari sistem pelaporan harian resmi wilayah ${targetAreaName}.`
+      : `1. Data diatas dihimpun otomatis dari sistem pelaporan harian resmi.`
+  );
   lines.push(`2. Mohon Waspang terkait segera memperbarui progres harian secara berkala.`);
   lines.push(``);
   lines.push(`_GovMonitor Admin System • PT Link Net & PMO MS CKT_`);
@@ -630,8 +719,8 @@ export function generateWeeklyAdminWhatsAppText(data: WeeklyRecapData): string {
   return lines.join('\n');
 }
 
-export function shareWeeklyRecapToWhatsApp(data: WeeklyRecapData, targetPhone?: string): void {
-  const text = generateWeeklyAdminWhatsAppText(data);
+export function shareWeeklyRecapToWhatsApp(data: WeeklyRecapData, targetPhone?: string, areaFilter?: string): void {
+  const text = generateWeeklyAdminWhatsAppText(data, areaFilter);
   const encodedText = encodeURIComponent(text);
 
   let url = `https://api.whatsapp.com/send?text=${encodedText}`;

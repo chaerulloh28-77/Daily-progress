@@ -148,44 +148,6 @@ export const ReportHeader: React.FC<ReportHeaderProps> = ({
             </div>
           </div>
         </div>
-
-        {/* Dual Tab Navigation: Input Harian vs Admin Rekap (Hanya untuk admin@gov.com) */}
-        {isSuperAdminUser && onTabChange && (
-          <div className="flex items-center gap-2 mt-3 pt-2.5 border-t border-slate-800/80">
-            <button
-              type="button"
-              id="nav-tab-input-harian"
-              onClick={() => onTabChange('input')}
-              className={`flex-1 h-9 px-3 rounded-xl font-cyber text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
-                activeTab === 'input'
-                  ? 'bg-cyan-500 text-black shadow-lg shadow-cyan-500/25 border border-cyan-400'
-                  : 'bg-[#091224] text-slate-300 hover:text-white border border-slate-800 hover:border-slate-700'
-              }`}
-            >
-              <FileText className={`w-4 h-4 ${activeTab === 'input' ? 'text-black' : 'text-cyan-400'}`} />
-              <span>Input Harian</span>
-            </button>
-
-            <button
-              type="button"
-              id="nav-tab-admin-rekap"
-              onClick={() => onTabChange('admin')}
-              className={`flex-1 h-9 px-3 rounded-xl font-cyber text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
-                activeTab === 'admin'
-                  ? 'bg-gradient-to-r from-amber-500 to-amber-400 text-black shadow-lg shadow-amber-500/25 border border-amber-300'
-                  : 'bg-[#091224] text-slate-300 hover:text-white border border-slate-800 hover:border-slate-700'
-              }`}
-            >
-              <BarChart3 className={`w-4 h-4 ${activeTab === 'admin' ? 'text-black' : 'text-amber-400'}`} />
-              <span>Admin Rekap</span>
-              <span className={`text-[9px] font-mono-cyber px-1.5 py-0.5 rounded font-bold ${
-                activeTab === 'admin' ? 'bg-black/20 text-black' : 'bg-amber-950/90 text-amber-300 border border-amber-500/40'
-              }`}>
-                Mingguan
-              </span>
-            </button>
-          </div>
-        )}
       </div>
     </header>
   );
